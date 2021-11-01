@@ -23,9 +23,9 @@
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.8.1</version>
 				<configuration>
-					<release>15</release>
-                    <source>15</source>
-                    <target>15</target>
+					<release>11</release>
+                    <source>11</source>
+                    <target>11</target>
                 </configuration>
 			</plugin>
 		</plugins>
@@ -41,23 +41,23 @@
 			<dependency>
 				<groupId>com.google.guava</groupId>
 				<artifactId>guava</artifactId>
-				<version>28.1-jre</version>
+				<version>31.0.1-jre</version>
 			</dependency>
 			<dependency>
 				<groupId>org.eclipse.collections</groupId>
 				<artifactId>eclipse-collections</artifactId>
-				<version>10.0.0</version>
+				<version>10.4.0</version>
 			</dependency>
 			<dependency>
 				<groupId>org.junit.jupiter</groupId>
 				<artifactId>junit-jupiter</artifactId>
-				<version>5.5.2</version>
+				<version>5.8.1</version>
 				<scope>test</scope>
 			</dependency>
 			<dependency>
 				<groupId>org.assertj</groupId>
 				<artifactId>assertj-core</artifactId>
-				<version>3.13.2</version>
+				<version>3.21.0</version>
 				<scope>test</scope>
 			</dependency>
 		</dependencies>
