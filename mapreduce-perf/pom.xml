@@ -9,6 +9,14 @@
     </parent>
     <artifactId>mapreduce-perf</artifactId>
 
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- JMH version to use with this project. -->
+        <jmh.version>1.35</jmh.version>
+        <!-- Name of the benchmark Uber-JAR to generate. -->
+        <uberjar.name>benchmarks</uberjar.name>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.openjdk.jmh</groupId>
@@ -40,14 +48,6 @@
             <version>${project.version}</version>
         </dependency>
     </dependencies>
-
-    <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <!-- JMH version to use with this project. -->
-        <jmh.version>1.33</jmh.version>
-        <!-- Name of the benchmark Uber-JAR to generate. -->
-        <uberjar.name>benchmarks</uberjar.name>
-    </properties>
 
     <build>
         <plugins>
