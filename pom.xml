@@ -67,5 +67,7 @@
 		<module>mapreduce-framework</module>
 		<module>mapreduce-wordcount</module>
 		<module>mapreduce-perf</module>
+        <module>mapreduce-server</module>
+		<module>mapreduce-wordcount-bundle</module>
 	</modules>
 </project>

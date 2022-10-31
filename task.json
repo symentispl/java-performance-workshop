@@ -1,0 +1,6 @@
+{
+  "codeUri" : "mapreduce-wordcount-bundle-0.0.1-SNAPSHOT.jar",
+  "context" : {
+    "filename" : "/home/jarek/projects/symentis/jvmperformance-workshop/mapreduce-wordcount/src/test/resources/big.txt"
+  }
+}
