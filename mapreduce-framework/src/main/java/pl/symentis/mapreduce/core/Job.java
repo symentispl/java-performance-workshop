@@ -1,7 +1,6 @@
 package pl.symentis.mapreduce.core;
 
-public interface Job
-{
+public interface Job {
     Input<String> input();
 
     Mapper<String, String, Long> mapper();
