@@ -1,5 +1,7 @@
 package pl.symentis.mapreduce.server;
 
+import org.apache.commons.lang3.builder.ToStringBuilder;
+
 import java.util.Map;
 
 public class JobDefinition
@@ -31,5 +33,14 @@ public class JobDefinition
     public void setContext( Map<String,String> context )
     {
         this.context = context;
+    }
+
+    @Override
+    public String toString()
+    {
+        return new ToStringBuilder( this )
+                .append( "codeUri", codeUri )
+                .append( "context", context )
+                .toString();
     }
 }
