@@ -8,5 +8,4 @@ public interface Values<K, V> {
     Set<K> keys();
 
     Iterator<V> values(K k);
-
 }
