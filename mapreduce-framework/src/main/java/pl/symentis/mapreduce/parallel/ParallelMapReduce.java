@@ -1,11 +1,10 @@
 package pl.symentis.mapreduce.parallel;
 
-import pl.symentis.mapreduce.core.*;
-
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.*;
+import pl.symentis.mapreduce.core.*;
 
 public class ParallelMapReduce implements MapReduce {
 
@@ -39,10 +38,7 @@ public class ParallelMapReduce implements MapReduce {
 
     @Override
     public <In, MK, MV, RK, RV> void run(
-            Input<In> input,
-            Mapper<In, MK, MV> mapper,
-            Reducer<MK, MV, RK, RV> reducer,
-            Output<RK, RV> output) {
+            Input<In> input, Mapper<In, MK, MV> mapper, Reducer<MK, MV, RK, RV> reducer, Output<RK, RV> output) {
 
         Phaser rootPhaser = new Phaser() {
             @Override
@@ -77,7 +73,6 @@ public class ParallelMapReduce implements MapReduce {
         for (MK key : keys) {
             reducer.reduce(key, map.get(key), output);
         }
-
     }
 
     @Override
@@ -106,16 +101,17 @@ public class ParallelMapReduce implements MapReduce {
 
         @Override
         public void run() {
-            mapper.map(in, (k, v) -> map.compute(k, (key, oldValue) -> {
-                Collection<V> newValue = oldValue;
-                if (newValue == null) {
-                    newValue = new ConcurrentLinkedQueue<>();
-                }
-                newValue.add(v);
-                return newValue;
-            }));
+            mapper.map(
+                    in,
+                    (k, v) -> map.compute(k, (key, oldValue) -> {
+                        Collection<V> newValue = oldValue;
+                        if (newValue == null) {
+                            newValue = new ConcurrentLinkedQueue<>();
+                        }
+                        newValue.add(v);
+                        return newValue;
+                    }));
             phaser.arriveAndDeregister();
         }
     }
-
 }

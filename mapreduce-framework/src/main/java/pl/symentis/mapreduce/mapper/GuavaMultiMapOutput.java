@@ -1,10 +1,9 @@
 package pl.symentis.mapreduce.mapper;
 
 import com.google.common.collect.ArrayListMultimap;
-import pl.symentis.mapreduce.core.MapperOutput;
-
 import java.util.Iterator;
 import java.util.Set;
+import pl.symentis.mapreduce.core.MapperOutput;
 
 public final class GuavaMultiMapOutput<K, V> implements MapperOutput<K, V> {
 

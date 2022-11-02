@@ -30,20 +30,4 @@ public class NonThreadLocalStopwords implements Stopwords {
         Collator collator = Collator.getInstance(Locale.ENGLISH);
         return stopwords.contains(collator.getCollationKey(str));
     }
-
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

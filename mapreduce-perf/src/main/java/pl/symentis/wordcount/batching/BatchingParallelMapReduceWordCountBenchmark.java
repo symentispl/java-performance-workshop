@@ -1,12 +1,11 @@
 package pl.symentis.wordcount.batching;
 
+import java.util.HashMap;
 import org.openjdk.jmh.annotations.*;
 import pl.symentis.mapreduce.batching.BatchingParallelMapReduce;
 import pl.symentis.mapreduce.core.MapReduce;
 import pl.symentis.wordcount.core.Stopwords;
 import pl.symentis.wordcount.core.WordCount;
-
-import java.util.HashMap;
 
 @State(Scope.Benchmark)
 public class BatchingParallelMapReduceWordCountBenchmark {
@@ -29,12 +28,10 @@ public class BatchingParallelMapReduceWordCountBenchmark {
     @SuppressWarnings("unchecked")
     @Setup(Level.Trial)
     public void setUp() throws Exception {
-        wordCount = new WordCount
-                .Builder()
+        wordCount = new WordCount.Builder()
                 .withStopwords((Class<? extends Stopwords>) Class.forName(stopwordsClass))
                 .build();
-        mapReduce = new BatchingParallelMapReduce
-                .Builder()
+        mapReduce = new BatchingParallelMapReduce.Builder()
                 .withPhaserMaxTasks(phaserMaxTasks)
                 .withThreadPoolSize(threadPoolMaxSize)
                 .withBatchSize(batchSize)
@@ -56,5 +53,4 @@ public class BatchingParallelMapReduceWordCountBenchmark {
                 map::put);
         return map;
     }
-
 }

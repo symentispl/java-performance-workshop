@@ -1,12 +1,11 @@
 package pl.symentis.wordcount.stopwords;
 
-import pl.symentis.wordcount.core.Stopwords;
-
 import java.io.*;
 import java.text.CollationKey;
 import java.text.Collator;
 import java.util.Locale;
 import java.util.TreeSet;
+import pl.symentis.wordcount.core.Stopwords;
 
 public class ThreadLocalStopwords implements Stopwords {
 
@@ -42,5 +41,4 @@ public class ThreadLocalStopwords implements Stopwords {
 
         return stopwords.contains(threadLocalCollator.get().getCollationKey(str));
     }
-
 }

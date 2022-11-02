@@ -1,11 +1,11 @@
 package pl.symentis.mapreduce.core;
 
+import static java.lang.String.format;
+
 import java.lang.reflect.InvocationTargetException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Supplier;
-
-import static java.lang.String.format;
 
 public class SequentialMapReduce implements MapReduce {
 
@@ -31,13 +31,13 @@ public class SequentialMapReduce implements MapReduce {
                         | InvocationTargetException
                         | NoSuchMethodException
                         | SecurityException e) {
-                    throw new IllegalArgumentException(format("cannot instatiate mapper output class %s", mapperOutputClass), e);
+                    throw new IllegalArgumentException(
+                            format("cannot instatiate mapper output class %s", mapperOutputClass), e);
                 }
             };
 
             return new SequentialMapReduce(supplier);
         }
-
     }
 
     @SuppressWarnings("rawtypes")
@@ -50,10 +50,7 @@ public class SequentialMapReduce implements MapReduce {
 
     @Override
     public <In, MK, MV, RK, RV> void run(
-            Input<In> input,
-            Mapper<In, MK, MV> mapper,
-            Reducer<MK, MV, RK, RV> reducer,
-            Output<RK, RV> output) {
+            Input<In> input, Mapper<In, MK, MV> mapper, Reducer<MK, MV, RK, RV> reducer, Output<RK, RV> output) {
 
         @SuppressWarnings("unchecked")
         MapperOutput<MK, MV> mapperOutput = mapperOutputSupplier.get();
@@ -72,5 +69,4 @@ public class SequentialMapReduce implements MapReduce {
     public void shutdown() {
         ;
     }
-
 }
