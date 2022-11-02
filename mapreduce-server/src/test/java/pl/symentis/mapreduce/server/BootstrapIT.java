@@ -15,25 +15,25 @@ import java.util.Map;
 public class BootstrapIT
 {
 
-    private Bootstrap bootstrap;
+    private Server server;
 
     @BeforeEach
     public void setUp(@TempDir Path tempDir) throws Exception
     {
-        bootstrap = new Bootstrap.Builder().jobsDir( tempDir).build();
-        bootstrap.start();
+        server = new Bootstrap.Builder().jobsDir( tempDir).build();
+        server.start();
     }
 
     @AfterEach
     public void tearDown() throws IOException
     {
-        bootstrap.shutdown();
+        server.shutdown();
     }
 
     @Test
     public void test() throws IOException, InterruptedException
     {
-        Path jobsDir = bootstrap.jobsDir();
+        Path jobsDir = server.jobsDir();
         System.out.println(jobsDir);
         var jobDefinition = new JobDefinition( "../mapreduce-wordcount-bundle/target/mapreduce-wordcount-bundle-0.0.1-SNAPSHOT.jar",
                                           Map.of( "filename", "../mapreduce-wordcount/src/test/resources/big.txt" ) );
