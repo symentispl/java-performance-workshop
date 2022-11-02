@@ -1,12 +1,11 @@
 package pl.symentis.mapreduce.batching;
 
-import pl.symentis.mapreduce.core.*;
-import pl.symentis.mapreduce.core.HashMapOutput;
+import static java.util.stream.Collectors.*;
 
 import java.util.*;
 import java.util.concurrent.*;
-
-import static java.util.stream.Collectors.*;
+import pl.symentis.mapreduce.core.*;
+import pl.symentis.mapreduce.core.HashMapOutput;
 
 public class BatchingParallelMapReduce implements MapReduce {
 
@@ -48,10 +47,7 @@ public class BatchingParallelMapReduce implements MapReduce {
 
     @Override
     public <In, MK, MV, RK, RV> void run(
-            Input<In> input,
-            Mapper<In, MK, MV> mapper,
-            Reducer<MK, MV, RK, RV> reducer,
-            Output<RK, RV> output) {
+            Input<In> input, Mapper<In, MK, MV> mapper, Reducer<MK, MV, RK, RV> reducer, Output<RK, RV> output) {
 
         Phaser rootPhaser = new Phaser() {
             @Override
@@ -73,7 +69,8 @@ public class BatchingParallelMapReduce implements MapReduce {
             if (batch.size() == batchSize || !input.hasNext()) {
                 phaser.register();
 
-                executorService.submit(new MapperPhase<>(new IteratorInput<>(batch.iterator()), mapper, mapResults, phaser));
+                executorService.submit(
+                        new MapperPhase<>(new IteratorInput<>(batch.iterator()), mapper, mapResults, phaser));
 
                 tasksPerPhaser++;
                 if (tasksPerPhaser >= phaserMaxTasks) {
@@ -91,13 +88,10 @@ public class BatchingParallelMapReduce implements MapReduce {
 
         // reduce
         reduce(reducer, output, map);
-
     }
 
     private <MK, MV, RK, RV> void reduce(
-            Reducer<MK, MV, RK, RV> reducer,
-            Output<RK, RV> output,
-            Map<MK, List<MV>> map) {
+            Reducer<MK, MV, RK, RV> reducer, Output<RK, RV> output, Map<MK, List<MV>> map) {
         Set<MK> keys = map.keySet();
         for (MK key : keys) {
             reducer.reduce(key, map.get(key), output);
@@ -105,23 +99,19 @@ public class BatchingParallelMapReduce implements MapReduce {
     }
 
     static <MK, MV, RK, RV> Map<MK, List<MV>> merge(
-            ConcurrentLinkedDeque<Map<MK, List<MV>>> mapResults,
-            Reducer<MK, MV, RK, RV> reducer) {
+            ConcurrentLinkedDeque<Map<MK, List<MV>>> mapResults, Reducer<MK, MV, RK, RV> reducer) {
         return mapResults.parallelStream()
                 .map(Map::entrySet)
                 .flatMap(Set::stream)
-                .collect(
-                        groupingBy(
-                                Map.Entry::getKey,
-                                mapping(
-                                        entry -> {
-                                            HashMapOutput<RK, RV> out = new HashMapOutput<>();
-                                            reducer.reduce(entry.getKey(), entry.getValue(), out);
-                                            return entry.getValue();
-                                        },
-                                        reducing(
-                                                new ArrayList<>(),
-                                                BatchingParallelMapReduce::sum))));
+                .collect(groupingBy(
+                        Map.Entry::getKey,
+                        mapping(
+                                entry -> {
+                                    HashMapOutput<RK, RV> out = new HashMapOutput<>();
+                                    reducer.reduce(entry.getKey(), entry.getValue(), out);
+                                    return entry.getValue();
+                                },
+                                reducing(new ArrayList<>(), BatchingParallelMapReduce::sum))));
     }
 
     @Override
@@ -157,7 +147,6 @@ public class BatchingParallelMapReduce implements MapReduce {
             mapResults.offer(output.asMap());
             phaser.arriveAndDeregister();
         }
-
     }
 
     private static <V> List<V> sum(List<V> op1, List<V> op2) {
@@ -166,5 +155,4 @@ public class BatchingParallelMapReduce implements MapReduce {
         vs.addAll(op2);
         return vs;
     }
-
 }
