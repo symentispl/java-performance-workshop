@@ -1,3 +1,4 @@
+name: Automatic cherry picking
 on:
   push:
     branches:
@@ -9,61 +10,13 @@ jobs:
     name: Cherry pick into parallel
     steps:
       - name: Checkout
-        uses: actions/checkout@v3.3.0
+        uses: actions/checkout@v2
         with:
           fetch-depth: 0
       - name: Cherry pick into parallel
         uses: carloscastrojumo/github-cherry-pick-action@v1.0.9
         with:
           branch: parallel
-          labels: |
-            cherry-pick
-          title: '[cherry-pick] {old_title}'
-          body: 'Cherry picking #{old_pull_request_id} onto this branch'
-  cherry_pick_batching:
-    runs-on: ubuntu-latest
-    name: Cherry pick into parallel
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3.3.0
-        with:
-          fetch-depth: 0
-      - name: Cherry pick into batching
-        uses: carloscastrojumo/github-cherry-pick-action@v1.0.9
-        with:
-          branch: batching
-          labels: |
-            cherry-pick
-          title: '[cherry-pick] {old_title}'
-          body: 'Cherry picking #{old_pull_request_id} onto this branch'
-  cherry_pick_forkjoin:
-    runs-on: ubuntu-latest
-    name: Cherry pick into parallel
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3.3.0
-        with:
-          fetch-depth: 0
-      - name: Cherry pick into forkjoin
-        uses: carloscastrojumo/github-cherry-pick-action@v1.0.9
-        with:
-          branch: forkjoin
-          labels: |
-            cherry-pick
-          title: '[cherry-pick] {old_title}'
-          body: 'Cherry picking #{old_pull_request_id} onto this branch'
-  cherry_pick_server:
-    runs-on: ubuntu-latest
-    name: Cherry pick into parallel
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3.3.0
-        with:
-          fetch-depth: 0
-      - name: Cherry pick into forkjoin
-        uses: carloscastrojumo/github-cherry-pick-action@v1.0.9
-        with:
-          branch: forkjoin
           labels: |
             cherry-pick
           title: '[cherry-pick] {old_title}'
