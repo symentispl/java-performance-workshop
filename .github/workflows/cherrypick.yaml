@@ -9,11 +9,11 @@ jobs:
     name: Cherry pick into parallel
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - name: Cherry pick into parallel
-        uses: carloscastrojumo/github-cherry-pick-action@v1.0.1
+        uses: carloscastrojumo/github-cherry-pick-action@v1.0.9
         with:
           branch: parallel
           labels: |
@@ -25,11 +25,11 @@ jobs:
     name: Cherry pick into parallel
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - name: Cherry pick into batching
-        uses: carloscastrojumo/github-cherry-pick-action@v1.0.1
+        uses: carloscastrojumo/github-cherry-pick-action@v1.0.9
         with:
           branch: batching
           labels: |
@@ -41,11 +41,11 @@ jobs:
     name: Cherry pick into parallel
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - name: Cherry pick into forkjoin
-        uses: carloscastrojumo/github-cherry-pick-action@v1.0.1
+        uses: carloscastrojumo/github-cherry-pick-action@v1.0.9
         with:
           branch: forkjoin
           labels: |
@@ -57,11 +57,11 @@ jobs:
     name: Cherry pick into parallel
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - name: Cherry pick into forkjoin
-        uses: carloscastrojumo/github-cherry-pick-action@v1.0.1
+        uses: carloscastrojumo/github-cherry-pick-action@v1.0.9
         with:
           branch: forkjoin
           labels: |
