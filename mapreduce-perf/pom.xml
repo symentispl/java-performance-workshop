@@ -9,6 +9,14 @@
     </parent>
     <artifactId>mapreduce-perf</artifactId>
 
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- JMH version to use with this project. -->
+        <jmh.version>1.36</jmh.version>
+        <!-- Name of the benchmark Uber-JAR to generate. -->
+        <uberjar.name>benchmarks</uberjar.name>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.openjdk.jmh</groupId>
@@ -23,12 +31,6 @@
         </dependency>
 
         <dependency>
-            <groupId>pl.project13.scala</groupId>
-            <artifactId>sbt-jmh-extras</artifactId>
-            <version>0.3.7</version>
-        </dependency>
-
-        <dependency>
             <groupId>pl.symentis.mapreduce</groupId>
             <artifactId>mapreduce-wordcount</artifactId>
             <version>${project.version}</version>
@@ -40,14 +42,6 @@
             <version>${project.version}</version>
         </dependency>
     </dependencies>
-
-    <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <!-- JMH version to use with this project. -->
-        <jmh.version>1.33</jmh.version>
-        <!-- Name of the benchmark Uber-JAR to generate. -->
-        <uberjar.name>benchmarks</uberjar.name>
-    </properties>
 
     <build>
         <plugins>
