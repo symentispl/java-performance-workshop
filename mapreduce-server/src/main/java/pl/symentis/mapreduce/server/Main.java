@@ -7,6 +7,8 @@ import com.github.rvesse.airline.annotations.Cli;
         commands = {Bootstrap.class, Bench.class})
 public class Main {
     public static void main(String[] args) {
+        Observer.getInstance().setupRegistry(args[0]).setupObservationRegistry().turnOnJvmMetrics();
+
         new com.github.rvesse.airline.Cli<Runnable>(Main.class).parse(args).run();
     }
 }
