@@ -1,6 +1,7 @@
 package pl.symentis.mapreduce.server;
 
 import com.google.gson.Gson;
+import io.micrometer.observation.Observation;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URL;
@@ -103,23 +104,29 @@ class Server {
             Path context = (Path) watchEvent.context();
             LOG.debug("new file {}", context);
             if (context.getFileName().toString().endsWith(".json")) {
-                try (var reader = Files.newBufferedReader(jobsDir.resolve(context))) {
-                    var jobDefinition = gson.fromJson(reader, JobDefinition.class);
-                    LOG.debug("loaded new job definition {}", jobDefinition);
-                    var job = loadJob(Paths.get(jobDefinition.getCodeUri()), jobDefinition.getContext());
-                    LOG.debug("loaded new job {}", job);
-                    executorService.submit(() -> {
-                        LOG.debug("running job {}", job);
-                        var output = new HashMap<String, Long>();
-                        mapReduce.run(job.input(), job.mapper(), job.reducer(), output::put);
-                    });
-                    Files.deleteIfExists(context);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                } finally {
-
-                }
+                Observation.createNotStarted(
+                                "server.job", Observer.getInstance().getObservationRegistry())
+                        .lowCardinalityKeyValue("job", "process")
+                        .highCardinalityKeyValue("jobId", context.getFileName().toString())
+                        .observe(() -> processJob(context));
             }
+        }
+    }
+
+    private void processJob(Path context) {
+        try (var reader = Files.newBufferedReader(jobsDir.resolve(context))) {
+            var jobDefinition = gson.fromJson(reader, JobDefinition.class);
+            LOG.debug("loaded new job definition {}", jobDefinition);
+            var job = loadJob(Paths.get(jobDefinition.getCodeUri()), jobDefinition.getContext());
+            LOG.debug("loaded new job {}", job);
+            executorService.submit(() -> {
+                LOG.debug("running job {}", job);
+                var output = new HashMap<String, Long>();
+                mapReduce.run(job.input(), job.mapper(), job.reducer(), output::put);
+            });
+            Files.deleteIfExists(context);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 }
