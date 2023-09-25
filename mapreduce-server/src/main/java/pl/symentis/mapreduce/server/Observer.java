@@ -13,7 +13,12 @@ import io.micrometer.core.instrument.observation.DefaultMeterObservationHandler;
 import io.micrometer.influx.InfluxConfig;
 import io.micrometer.influx.InfluxMeterRegistry;
 import io.micrometer.observation.ObservationRegistry;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.List;
+import org.apache.commons.configuration2.PropertiesConfiguration;
+import org.apache.commons.configuration2.ex.ConfigurationException;
 
 public class Observer {
     private static Observer instance;
@@ -30,21 +35,35 @@ public class Observer {
         return instance;
     }
 
-    public Observer setupRegistry(String processNane) {
+    public Observer setupRegistry(String processName, File configFile) {
+
+        var propertiesConfiguration = new PropertiesConfiguration();
+        try {
+            propertiesConfiguration.read(new FileReader(configFile));
+        } catch (ConfigurationException e) {
+            throw new RuntimeException(e);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        var influxOrg = propertiesConfiguration.get(String.class, "influxOrg");
+        var influxBucket = propertiesConfiguration.get(String.class, "influxBucket");
+        var influxToken = propertiesConfiguration.get(String.class, "influxToken");
+
         InfluxConfig influxConfig = new InfluxConfig() {
             @Override
             public String org() {
-                return "symentis";
+                return influxOrg;
             }
 
             @Override
             public String bucket() {
-                return "rakiety";
+                return influxBucket;
             }
 
             @Override
             public String token() {
-                return "qdP2pk0pLtsFAdahQAa8uhyN_ezdg5X0KXTDhcu6AYOAxK-AnKS9fQHlYWiacDN6jSoGzv8VXCfsmYbzMdUk2A==";
+                return influxToken;
             }
 
             @Override
@@ -54,7 +73,7 @@ public class Observer {
         };
         registry = new InfluxMeterRegistry(influxConfig, Clock.SYSTEM);
 
-        registry.config().meterFilter(commonTags(List.of(Tag.of("process", processNane))));
+        registry.config().meterFilter(commonTags(List.of(Tag.of("process", processName))));
 
         return this;
     }

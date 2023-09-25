@@ -1,10 +1,15 @@
 package pl.symentis.mapreduce.server;
 
+import com.github.rvesse.airline.annotations.AirlineModule;
 import com.github.rvesse.airline.annotations.Command;
 import com.github.rvesse.airline.annotations.Option;
 import com.github.rvesse.airline.annotations.restrictions.Directory;
 import com.github.rvesse.airline.annotations.restrictions.Required;
 import com.google.gson.Gson;
+import io.pyroscope.http.Format;
+import io.pyroscope.javaagent.EventType;
+import io.pyroscope.javaagent.PyroscopeAgent;
+import io.pyroscope.javaagent.config.Config;
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -20,11 +25,15 @@ import pl.symentis.mapreduce.batching.BatchingParallelMapReduce;
 public class Bootstrap implements Runnable {
 
     private static final Logger LOG = LoggerFactory.getLogger(Bootstrap.class);
+    private static final String PROCESS_NAME = "bootstrap";
 
     @Option(name = "--jobs-dir")
     @Directory(mustExist = true)
     @Required
     private File jobDir;
+
+    @AirlineModule
+    private GlobalOptions globalOptions;
 
     private Server boot() throws IOException {
         return new Builder().jobsDir(jobDir.toPath()).build();
@@ -32,6 +41,19 @@ public class Bootstrap implements Runnable {
 
     @Override
     public void run() {
+
+        PyroscopeAgent.start(new Config.Builder()
+                .setApplicationName(PROCESS_NAME)
+                .setProfilingEvent(EventType.ITIMER)
+                .setFormat(Format.JFR)
+                .setServerAddress("http://localhost:4040")
+                .build());
+
+        Observer.getInstance()
+                .setupRegistry(PROCESS_NAME, globalOptions.configFile)
+                .setupObservationRegistry()
+                .turnOnJvmMetrics();
+
         try {
             boot().start();
         } catch (IOException e) {

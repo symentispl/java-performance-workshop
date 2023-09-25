@@ -1,10 +1,15 @@
 package pl.symentis.mapreduce.server;
 
+import com.github.rvesse.airline.annotations.AirlineModule;
 import com.github.rvesse.airline.annotations.Command;
 import com.github.rvesse.airline.annotations.Option;
 import com.github.rvesse.airline.annotations.restrictions.Directory;
 import com.github.rvesse.airline.annotations.restrictions.Required;
 import com.google.gson.Gson;
+import io.pyroscope.http.Format;
+import io.pyroscope.javaagent.EventType;
+import io.pyroscope.javaagent.PyroscopeAgent;
+import io.pyroscope.javaagent.config.Config;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -18,6 +23,7 @@ import org.slf4j.LoggerFactory;
 public class Bench implements Runnable {
 
     private static final Logger LOG = LoggerFactory.getLogger(Bench.class);
+    private static final String PROCESS_NAME = "bench";
 
     @Option(name = "--jobs-dir")
     @Directory
@@ -27,8 +33,24 @@ public class Bench implements Runnable {
     @Option(name = "--job-interval-ms")
     private int jobIntervalMillis = 200;
 
+    @AirlineModule
+    private GlobalOptions globalOptions;
+
     @Override
     public void run() {
+
+        Observer.getInstance()
+                .setupRegistry(PROCESS_NAME, globalOptions.configFile)
+                .setupObservationRegistry()
+                .turnOnJvmMetrics();
+
+        PyroscopeAgent.start(new Config.Builder()
+                .setApplicationName(PROCESS_NAME)
+                .setProfilingEvent(EventType.ITIMER)
+                .setFormat(Format.JFR)
+                .setServerAddress("http://localhost:4040")
+                .build());
+
         var jobDefinition = new JobDefinition(
                 "../mapreduce-wordcount-bundle/target/mapreduce-wordcount-bundle-0.0.1-SNAPSHOT.jar",
                 Map.of("filename", "../mapreduce-wordcount/src/test/resources/big.txt"));
