@@ -24,7 +24,7 @@ public class Bench implements Runnable {
     @Required
     private File jobsDir;
 
-    @Option(name = "-job-interval-ms")
+    @Option(name = "--job-interval-ms")
     private int jobIntervalMillis = 200;
 
     @Override

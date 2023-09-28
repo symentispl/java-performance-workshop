@@ -56,7 +56,7 @@ class Server {
             }
             var url = absolutePath.toUri().toURL();
             LOG.debug("loading job from code url {}", url);
-            ClassLoader jobClassLoader = URLClassLoader.newInstance(new URL[] {url});
+            var jobClassLoader = URLClassLoader.newInstance(new URL[] {url});
             var jobServiceLoader = ServiceLoader.load(JobFactory.class, jobClassLoader);
             var first = jobServiceLoader.findFirst();
             if (first.isPresent()) {
@@ -116,6 +116,8 @@ class Server {
                     Files.deleteIfExists(context);
                 } catch (IOException e) {
                     throw new RuntimeException(e);
+                } finally {
+
                 }
             }
         }
