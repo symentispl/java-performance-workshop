@@ -6,10 +6,6 @@ import com.github.rvesse.airline.annotations.Option;
 import com.github.rvesse.airline.annotations.restrictions.Directory;
 import com.github.rvesse.airline.annotations.restrictions.Required;
 import com.google.gson.Gson;
-import io.pyroscope.http.Format;
-import io.pyroscope.javaagent.EventType;
-import io.pyroscope.javaagent.PyroscopeAgent;
-import io.pyroscope.javaagent.config.Config;
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -41,13 +37,6 @@ public class Bootstrap implements Runnable {
 
     @Override
     public void run() {
-
-        PyroscopeAgent.start(new Config.Builder()
-                .setApplicationName(PROCESS_NAME)
-                .setProfilingEvent(EventType.ITIMER)
-                .setFormat(Format.JFR)
-                .setServerAddress("http://localhost:4040")
-                .build());
 
         Observer.getInstance()
                 .setupRegistry(PROCESS_NAME, globalOptions.configFile)

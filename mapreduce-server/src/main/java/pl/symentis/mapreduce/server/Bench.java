@@ -6,10 +6,6 @@ import com.github.rvesse.airline.annotations.Option;
 import com.github.rvesse.airline.annotations.restrictions.Directory;
 import com.github.rvesse.airline.annotations.restrictions.Required;
 import com.google.gson.Gson;
-import io.pyroscope.http.Format;
-import io.pyroscope.javaagent.EventType;
-import io.pyroscope.javaagent.PyroscopeAgent;
-import io.pyroscope.javaagent.config.Config;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -26,12 +22,22 @@ public class Bench implements Runnable {
     private static final String PROCESS_NAME = "bench";
 
     @Option(name = "--jobs-dir")
-    @Directory
+    @Directory(mustExist = true)
     @Required
     private File jobsDir;
 
     @Option(name = "--job-interval-ms")
     private int jobIntervalMillis = 200;
+
+    @Option(name = "--code-uri")
+    @Required
+    @com.github.rvesse.airline.annotations.restrictions.File(mustExist = true)
+    private String codeUri;
+
+    @Option(name = "--filename")
+    @Required
+    @com.github.rvesse.airline.annotations.restrictions.File(mustExist = true, readable = true)
+    private String filename;
 
     @AirlineModule
     private GlobalOptions globalOptions;
@@ -44,16 +50,7 @@ public class Bench implements Runnable {
                 .setupObservationRegistry()
                 .turnOnJvmMetrics();
 
-        PyroscopeAgent.start(new Config.Builder()
-                .setApplicationName(PROCESS_NAME)
-                .setProfilingEvent(EventType.ITIMER)
-                .setFormat(Format.JFR)
-                .setServerAddress("http://localhost:4040")
-                .build());
-
-        var jobDefinition = new JobDefinition(
-                "../mapreduce-wordcount-bundle/target/mapreduce-wordcount-bundle-0.0.1-SNAPSHOT.jar",
-                Map.of("filename", "../mapreduce-wordcount/src/test/resources/big.txt"));
+        var jobDefinition = new JobDefinition(codeUri, Map.of("filename", filename));
         var gson = new Gson();
 
         while (true) {
