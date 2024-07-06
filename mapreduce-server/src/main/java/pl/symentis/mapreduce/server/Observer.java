@@ -16,6 +16,7 @@ import io.micrometer.observation.ObservationRegistry;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.List;
 import org.apache.commons.configuration2.PropertiesConfiguration;
 import org.apache.commons.configuration2.ex.ConfigurationException;
@@ -46,24 +47,30 @@ public class Observer {
             throw new RuntimeException(e);
         }
 
-        var influxOrg = propertiesConfiguration.get(String.class, "influxOrg");
-        var influxBucket = propertiesConfiguration.get(String.class, "influxBucket");
-        var influxToken = propertiesConfiguration.get(String.class, "influxToken");
-
         InfluxConfig influxConfig = new InfluxConfig() {
             @Override
             public String org() {
-                return influxOrg;
+                return propertiesConfiguration.get(String.class, "influxOrg");
             }
 
             @Override
             public String bucket() {
-                return influxBucket;
+                return propertiesConfiguration.get(String.class, "influxBucket");
             }
 
             @Override
             public String token() {
-                return influxToken;
+                return propertiesConfiguration.get(String.class, "influxToken");
+            }
+
+            @Override
+            public String uri() {
+                return propertiesConfiguration.get(String.class, "influxUri");
+            }
+
+            @Override
+            public Duration step() {
+                return Duration.ofSeconds(5);
             }
 
             @Override
