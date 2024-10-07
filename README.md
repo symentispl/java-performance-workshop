@@ -7,7 +7,8 @@
 
 You need to have async profiler installed.
 
-Once you have it, you need configure your operating system:
+LINUX ONLY:
+    Once you have it, you need configure your operating system:
 
     sysctl kernel.kptr_restrict=0
     sysctl kernel.perf_event_paranoid=1
