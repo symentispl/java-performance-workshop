@@ -5,9 +5,6 @@ import java.io.IOError;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.text.CollationKey;
-import java.text.Collator;
-import java.util.Locale;
 import java.util.TreeSet;
 
 public class NonCollatorStopwords implements Stopwords {
