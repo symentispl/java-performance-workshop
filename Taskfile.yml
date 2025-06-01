@@ -43,10 +43,57 @@ tasks:
       - build
     cmds:
       - java -jar mapreduce-perf/target/benchmarks.jar -wi 5 -i 5 -f 1
+  parallel-scaling-benchmarks:
+    desc: "Run scaling benchmarks for ParallelMapReduceWordCountBenchmark with different thread counts"
+    deps:
+      - build
+    vars:
+      RESULTS_FILE: "{{.BENCHMARKS_OUTPUT_DIR}}/parallel-scaling-results.json"
+    cmds:
+      - mkdir -p {{.BENCHMARKS_OUTPUT_DIR}}
+      - |
+        java -jar {{.BENCHMARKS_JAR}} \
+          "ParallelMapReduceWordCountBenchmark" \
+          -p threadPoolMaxSize=2,4,8,16,32,64 \
+          -wi 3 -i 5 -f 1 \
+          -rf json -rff {{.RESULTS_FILE}}
+      - |
+        echo "=== Parallel Scaling Benchmark Results ==="
+        echo "Threads | Throughput (ops/sec) | Error     "
+        echo "--------|---------------------|----------"
+        jq -r '.[] | select(.benchmark | contains("countWords")) | "\(.params.threadPoolMaxSize | tostring | .[0:2]) | \(.primaryMetric.score | tostring | .[0:10]) | ±\(.primaryMetric.scoreError | tostring | .[0:6])"' {{.RESULTS_FILE}} | 
+        awk -F'|' '{printf "%-7s | %-19s | %-9s\n", $1, $2, $3}'
+  batching-scaling-benchmarks:
+    desc: "Run scaling benchmarks for BatchingMapReduceWordCountBenchmark with different thread counts"
+    deps:
+      - build
+    vars:
+      RESULTS_FILE: "{{.BENCHMARKS_OUTPUT_DIR}}/batching-scaling-results.json"
+    cmds:
+      - mkdir -p {{.BENCHMARKS_OUTPUT_DIR}}
+      - |
+        java -jar {{.BENCHMARKS_JAR}} \
+          "BatchingMapReduceWordCountBenchmark" \
+          -p threadPoolMaxSize=2,4,8,16,32,64 \
+          -wi 3 -i 5 -f 1 \
+          -rf json -rff {{.RESULTS_FILE}}
+      - |
+        echo "=== Batching Scaling Benchmark Results ==="
+        echo "Threads | Throughput (ops/sec) | Error     "
+        echo "--------|---------------------|----------"
+        jq -r '.[] | select(.benchmark | contains("countWords")) | "\(.params.threadPoolMaxSize | tostring | .[0:2]) | \(.primaryMetric.score | tostring | .[0:10]) | ±\(.primaryMetric.scoreError | tostring | .[0:6])"' {{.RESULTS_FILE}} | 
+        awk -F'|' '{printf "%-7s | %-19s | %-9s\n", $1, $2, $3}'
+  scaling-benchmarks:
+    deps:
+      - parallel-scaling-benchmarks
+      - batching-scaling-benchmarks
   profile-benchmarks:
     desc: "Profile benchmarks using async-profiler"
     deps:
       - download-async-profiler
       - build
     cmds:
-      - java -jar {{.BENCHMARKS_JAR}} -wi 5 -i 5 -f 1 -prof "async:libPath={{.ASYNC_PROFILER_DIR}}/lib/libasyncProfiler.so;output=flamegraph;event=cpu;dir={{.BENCHMARKS_OUTPUT_DIR}}"
+      - |
+        java -jar {{.BENCHMARKS_JAR}} \
+        -wi 5 -i 5 -f 1 \
+        -prof "async:libPath={{.ASYNC_PROFILER_DIR}}/lib/libasyncProfiler.so;output=flamegraph;event=cpu;dir={{.BENCHMARKS_OUTPUT_DIR}}"

@@ -7,7 +7,7 @@ import java.util.concurrent.*;
 import pl.symentis.mapreduce.core.*;
 import pl.symentis.mapreduce.core.HashMapOutput;
 
-public class BatchingParallelMapReduce implements MapReduce {
+public class BatchingMapReduce implements MapReduce {
 
     public static class Builder {
 
@@ -31,7 +31,7 @@ public class BatchingParallelMapReduce implements MapReduce {
         }
 
         public MapReduce build() {
-            return new BatchingParallelMapReduce(threadPoolMaxSize, phaserMaxTasks, batchSize);
+            return new BatchingMapReduce(threadPoolMaxSize, phaserMaxTasks, batchSize);
         }
     }
 
@@ -39,7 +39,7 @@ public class BatchingParallelMapReduce implements MapReduce {
     private final int phaserMaxTasks;
     private final int batchSize;
 
-    public BatchingParallelMapReduce(int threadPoolMaxSize, int phaserMaxTasks, int batchSize) {
+    public BatchingMapReduce(int threadPoolMaxSize, int phaserMaxTasks, int batchSize) {
         this.executorService = Executors.newFixedThreadPool(threadPoolMaxSize);
         this.phaserMaxTasks = phaserMaxTasks;
         this.batchSize = batchSize;
@@ -111,7 +111,7 @@ public class BatchingParallelMapReduce implements MapReduce {
                                     reducer.reduce(entry.getKey(), entry.getValue(), out);
                                     return entry.getValue();
                                 },
-                                reducing(new ArrayList<>(), BatchingParallelMapReduce::sum))));
+                                reducing(new ArrayList<>(), BatchingMapReduce::sum))));
     }
 
     @Override
