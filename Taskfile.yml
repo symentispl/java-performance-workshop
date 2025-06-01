@@ -1,0 +1,52 @@
+version: '3'
+
+vars:
+  ASYNC_PROFILER_DIR: "{{.TASK_DIR}}/.local/async-profiler"
+  BENCHMARKS_OUTPUT_DIR: "{{.TASK_DIR}}/target/benchmarks"
+  BENCHMARKS_JAR: "mapreduce-perf/target/benchmarks.jar"
+
+tasks:
+  download-async-profiler:
+    desc: "Install async-profiler (Linux x64)"
+    vars:
+      ASYNC_PROFILER_VERSION: "4.0"
+      ASYNC_PROFILER_URL: "https://github.com/async-profiler/async-profiler/releases/download/v{{.ASYNC_PROFILER_VERSION}}/async-profiler-{{.ASYNC_PROFILER_VERSION}}-linux-x64.tar.gz"
+      ASYNC_PROFILER_ARCHIVE: "async-profiler-{{.ASYNC_PROFILER_VERSION}}-linux-x64.tar.gz"
+      VERSION_FILE: "{{.ASYNC_PROFILER_DIR}}/.version"
+    cmds:
+      - curl -L -o {{.ASYNC_PROFILER_ARCHIVE}} {{.ASYNC_PROFILER_URL}}
+      - rm -rf {{.ASYNC_PROFILER_DIR}}
+      - mkdir -p {{.ASYNC_PROFILER_DIR}}
+      - tar xzf {{.ASYNC_PROFILER_ARCHIVE}} --strip-components=1 -C {{.ASYNC_PROFILER_DIR}}
+      - echo "{{.ASYNC_PROFILER_VERSION}}" > {{.VERSION_FILE}}
+      - rm {{.ASYNC_PROFILER_ARCHIVE}}
+    sources:
+      - Taskfile.yml
+    generates:
+      - "{{.ASYNC_PROFILER_DIR}}/lib/libasyncProfiler.so"
+    status:
+      - test -f "{{.VERSION_FILE}}" && test "$(cat {{.VERSION_FILE}})" = "{{.ASYNC_PROFILER_VERSION}}"
+  build:
+    desc: "Build the project with Maven"
+    cmds:
+      - ./mvnw --batch-mode --update-snapshots verify
+    sources:
+      - "pom.xml"
+      - "**/src/main/java/**"
+      - "**/src/test/java/**"
+    generates:
+      - "**/target/classes/**"
+      - "**/target/test-classes/**"
+  run-benchmarks:
+    desc: "Run benchmarks"
+    deps:
+      - build
+    cmds:
+      - java -jar mapreduce-perf/target/benchmarks.jar -wi 5 -i 5 -f 1
+  profile-benchmarks:
+    desc: "Profile benchmarks using async-profiler"
+    deps:
+      - download-async-profiler
+      - build
+    cmds:
+      - java -jar {{.BENCHMARKS_JAR}} -wi 5 -i 5 -f 1 -prof "async:libPath={{.ASYNC_PROFILER_DIR}}/lib/libasyncProfiler.so;output=flamegraph;event=cpu;dir={{.BENCHMARKS_OUTPUT_DIR}}"
