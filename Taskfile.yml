@@ -43,6 +43,29 @@ tasks:
       - build
     cmds:
       - java -jar mapreduce-perf/target/benchmarks.jar -wi 5 -i 5 -f 1
+  stop-words-benchmarks:
+    desc: "Run benchmarks for Stopwords"
+    deps:
+      - build
+    vars:
+      RESULTS_FILE: "{{.BENCHMARKS_OUTPUT_DIR}}/stop-words-results.json"
+    cmds:
+      - mkdir -p {{.BENCHMARKS_OUTPUT_DIR}}
+      - |
+        java -jar {{.BENCHMARKS_JAR}} \
+          "SequentialMapReduceWordCountBenchmark" \
+          -wi 3 -i 5 -f 1 \
+          -p stopwordsClass="pl.symentis.wordcount.core.NonThreadLocalStopwords,pl.symentis.wordcount.stopwords.ThreadLocalStopwords,pl.symentis.wordcount.stopwords.ICUThreadLocalStopwords" \
+          -rf json -rff {{.RESULTS_FILE}}
+      - |
+        echo "=== Mapper Output Benchmark Results ==="
+        echo ""
+        echo "[cols=\"3*\",options=\"header\"]"
+        echo "|==="
+        echo "| Mapper Output Class | Throughput (ops/sec) | Error"
+        jq -r '.[] | select(.benchmark | contains("countWords")) | "\(.params.stopwordsClass | split(".") | last) | \(.primaryMetric.score | tostring | .[0:10]) | ±\(.primaryMetric.scoreError | tostring | .[0:6])"' {{.RESULTS_FILE}} | 
+        awk -F'|' '{printf "| %-30s | %-19s | %-15s\n", $1, $2, $3}'
+        echo "|==="
   parallel-scaling-benchmarks:
     desc: "Run scaling benchmarks for ParallelMapReduceWordCountBenchmark with different thread counts"
     deps:
