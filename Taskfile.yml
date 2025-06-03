@@ -55,7 +55,7 @@ tasks:
         java -jar {{.BENCHMARKS_JAR}} \
           "ParallelMapReduceWordCountBenchmark" \
           -p threadPoolMaxSize=2,4,8,16,32,64 \
-          -wi 3 -i 5 -f 1 \
+          -wi 3 -i 5 -f 3 \
           -rf json -rff {{.RESULTS_FILE}}
       - |
         echo "=== Parallel Scaling Benchmark Results ==="
@@ -75,7 +75,7 @@ tasks:
         java -jar {{.BENCHMARKS_JAR}} \
           "BatchingMapReduceWordCountBenchmark" \
           -p threadPoolMaxSize=2,4,8,16,32,64 \
-          -wi 3 -i 5 -f 1 \
+          -wi 3 -i 5 -f 3 \
           -rf json -rff {{.RESULTS_FILE}}
       - |
         echo "=== Batching Scaling Benchmark Results ==="
@@ -95,5 +95,8 @@ tasks:
     cmds:
       - |
         java -jar {{.BENCHMARKS_JAR}} \
+        ParallelMapReduceWordCountBenchmark \
         -wi 5 -i 5 -f 1 \
-        -prof "async:libPath={{.ASYNC_PROFILER_DIR}}/lib/libasyncProfiler.so;output=flamegraph;event=cpu;dir={{.BENCHMARKS_OUTPUT_DIR}}"
+        -p threadPoolMaxSize=2,4,8,16,32,64 \
+        -p stopwordsClass="pl.symentis.wordcount.stopwords.ICUThreadLocalStopwords" \
+        -prof "async:libPath={{.ASYNC_PROFILER_DIR}}/lib/libasyncProfiler.so;event=wall;output=collapsed;threads=true;dir={{.BENCHMARKS_OUTPUT_DIR}}"
