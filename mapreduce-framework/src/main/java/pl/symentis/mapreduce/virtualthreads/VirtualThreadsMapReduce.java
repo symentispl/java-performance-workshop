@@ -21,6 +21,8 @@ import pl.symentis.mapreduce.core.Mapper;
 import pl.symentis.mapreduce.core.Output;
 import pl.symentis.mapreduce.core.Reducer;
 
+import static java.util.stream.Collectors.*;
+
 public class VirtualThreadsMapReduce implements MapReduce {
 
     public static class Builder {

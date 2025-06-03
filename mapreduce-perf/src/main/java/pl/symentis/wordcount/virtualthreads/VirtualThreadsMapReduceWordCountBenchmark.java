@@ -13,6 +13,8 @@ import pl.symentis.mapreduce.virtualthreads.VirtualThreadsMapReduce;
 import pl.symentis.wordcount.core.Stopwords;
 import pl.symentis.wordcount.core.WordCount;
 
+import java.util.HashMap;
+
 @State(Scope.Benchmark)
 public class VirtualThreadsMapReduceWordCountBenchmark {
 
