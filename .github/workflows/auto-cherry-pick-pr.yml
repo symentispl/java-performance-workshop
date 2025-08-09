@@ -35,6 +35,18 @@ jobs:
         fetch-depth: 0  # Fetch full history for cherry-picking
         token: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Fetch all branches
+      run: |
+        git fetch --all
+        git branch -r | grep -v '\->' | while read remote; do
+          branch=${remote#origin/}
+          if [ "$branch" != "HEAD" ] && [ "$branch" != "cherry-pick-668adc86856b82ee56ab195fba9b8186f2238f3b" ]; then
+            git branch --track "$branch" "$remote" 2>/dev/null || true
+          fi
+        done
+        echo "Available branches:"
+        git branch -a
+
     - name: Configure Git
       run: |
         git config user.name "github-actions[bot]"
@@ -72,8 +84,23 @@ jobs:
         SOURCE_BRANCH="${{ steps.branches.outputs.source_branch }}"
         TARGET_BRANCH="${{ steps.branches.outputs.target_branch }}"
         
+        # Ensure we're referencing the correct remote branches
+        if [ "$SOURCE_BRANCH" = "master" ]; then
+          SOURCE_REF="origin/master"
+        else
+          SOURCE_REF="origin/$SOURCE_BRANCH"
+        fi
+        
+        if [ "$TARGET_BRANCH" = "master" ]; then
+          TARGET_REF="origin/master" 
+        else
+          TARGET_REF="origin/$TARGET_BRANCH"
+        fi
+        
+        echo "Checking for commits between $SOURCE_REF and $TARGET_REF"
+        
         # Find commits that are in source but not in target
-        COMMITS_TO_PICK=$(git log --reverse --pretty=format:"%H" "$SOURCE_BRANCH" --not "$TARGET_BRANCH")
+        COMMITS_TO_PICK=$(git log --reverse --pretty=format:"%H" "$SOURCE_REF" --not "$TARGET_REF")
         
         if [ -z "$COMMITS_TO_PICK" ]; then
           echo "No new commits to cherry-pick from $SOURCE_BRANCH to $TARGET_BRANCH"
