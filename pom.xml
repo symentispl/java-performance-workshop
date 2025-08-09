@@ -7,25 +7,23 @@
     <version>0.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
 
-	<build>
-		<pluginManagement>
-			<plugins>
-			  <plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-surefire-plugin</artifactId>
-				<version>3.0.0-M5</version>
-			  </plugin>
-			</plugins>
-		  </pluginManagement>
-		<plugins>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.8.1</version>
-				<configuration>
-					<release>15</release>
-                    <source>15</source>
-                    <target>15</target>
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>3.0.0-M5</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.14.0</version>
+                <configuration>
+                    <release>24</release>
                 </configuration>
             </plugin>
             <plugin>
@@ -69,7 +67,7 @@
             <dependency>
                 <groupId>org.assertj</groupId>
                 <artifactId>assertj-core</artifactId>
-                <version>3.26.3</version>
+                <version>3.27.3</version>
                 <scope>test</scope>
             </dependency>
         </dependencies>
