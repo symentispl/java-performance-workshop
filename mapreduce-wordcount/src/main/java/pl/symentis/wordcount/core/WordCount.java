@@ -13,6 +13,7 @@ import java.io.InputStreamReader;
 import java.lang.reflect.InvocationTargetException;
 import java.util.NoSuchElementException;
 import java.util.regex.Pattern;
+
 import pl.symentis.mapreduce.core.Input;
 import pl.symentis.mapreduce.core.Mapper;
 import pl.symentis.mapreduce.core.Output;
