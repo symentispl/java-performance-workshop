@@ -1,6 +1,6 @@
-# Auto Cherry-Pick Workflow
+# Auto Merge Workflow
 
-This workflow automatically propagates commits through a defined branch chain using cherry-picks and pull requests.
+This workflow automatically propagates commits through a defined branch chain using git merge and pull requests.
 
 ## Branch Chain
 
@@ -12,64 +12,59 @@ master → parallel → batching → workstealing → virtualthreads → server
 ## How It Works
 
 1. **Trigger**: When you push commits to any branch in the chain (except `server`)
-2. **Detection**: The workflow finds commits that exist in the source branch but not in the target branch
-3. **Cherry-pick**: Creates a new branch and attempts to cherry-pick the commits
-4. **PR Creation**: Creates a pull request from the cherry-pick branch to the target branch
+2. **Check**: The workflow checks if the target branch is behind the source branch
+3. **Merge**: Creates a new branch and attempts to merge the source branch
+4. **PR Creation**: Creates a pull request from the merge branch to the target branch
 
 ## Workflow Behavior
 
 ### ✅ No Conflicts
-- All commits cherry-pick cleanly
-- PR is labeled `auto-cherry-pick` and `ready-to-merge`
+- Merge completes successfully
+- PR is labeled `auto-merge` and `ready-to-merge`
 - PR is ready for review and merge
 
-### ⚠️ Conflicts Detected
-- Commits with conflicts are committed with conflict markers
-- PR is labeled `auto-cherry-pick`, `conflicts`, and `manual-resolution-needed`
-- Manual resolution is required (see instructions in the PR)
+### ❌ Conflicts Detected
+- **Workflow fails immediately** when conflicts are detected
+- No PR is created
+- Manual merge resolution is required
 
 ## Manual Conflict Resolution
 
-When conflicts occur, follow these steps:
+When the workflow fails due to merge conflicts, resolve them manually:
 
-1. **Checkout the cherry-pick branch:**
+1. **Checkout the target branch locally:**
    ```bash
-   git checkout cherry-pick/source-to-target-timestamp
+   git checkout <target-branch>
+   git pull origin <target-branch>
    ```
 
-2. **Find commits with conflicts:**
+2. **Attempt the merge:**
    ```bash
-   git log --oneline --grep="CONFLICTS"
+   git merge <source-branch>
    ```
 
-3. **For each conflicted commit:**
+3. **Resolve conflicts:**
    ```bash
-   # Reset to the commit before the conflicted one
-   git reset --hard HEAD~1
-   
-   # Re-apply the cherry-pick interactively
-   git cherry-pick <commit-hash>
-   
-   # Resolve conflicts manually
-   # Edit the conflicted files
+   # Edit conflicted files to resolve conflicts
+   # Remove conflict markers and choose the correct code
    
    # Add resolved files
    git add <resolved-files>
    
-   # Continue cherry-pick
-   git cherry-pick --continue
+   # Complete the merge
+   git commit
    ```
 
-4. **Push the resolved changes:**
+4. **Push the resolved merge:**
    ```bash
-   git push origin cherry-pick/source-to-target-timestamp
+   git push origin <target-branch>
    ```
 
 ## Manual Triggering
 
 You can manually trigger the workflow for any source/target combination:
 
-1. Go to Actions → Auto Cherry-Pick PR
+1. Go to Actions → Auto Merge PR
 2. Click "Run workflow"
 3. Select source and target branches
 4. Click "Run workflow"
@@ -78,7 +73,7 @@ You can manually trigger the workflow for any source/target combination:
 
 The branch chain is configured in the workflow file under `env.BRANCH_CHAIN`. To modify:
 
-1. Edit `.github/workflows/auto-cherry-pick-pr.yml`
+1. Edit `.github/workflows/auto-merge-pr.yml`
 2. Update the `BRANCH_CHAIN` environment variable
 3. Follow the format: `source_branch=target_branch`
 
@@ -97,18 +92,18 @@ env:
 
 The workflow automatically adds labels to PRs:
 
-- **No conflicts**: `auto-cherry-pick`, `ready-to-merge`
-- **With conflicts**: `auto-cherry-pick`, `conflicts`, `manual-resolution-needed`
+- **Success**: `auto-merge`, `ready-to-merge`
+- **Conflicts**: Workflow fails, no PR created
 
 ## Branch Naming
 
-Cherry-pick branches follow this pattern:
+Merge branches follow this pattern:
 ```
-cherry-pick/{source}-to-{target}-{timestamp}
+merge/{source}-to-{target}-{timestamp}
 ```
 
-Example: `cherry-pick/master-to-parallel-20250809-102855`
+Example: `merge/master-to-parallel-20250809-102855`
 
 ## Cleanup
 
-After merging a cherry-pick PR, you can safely delete the cherry-pick branch as it's no longer needed.
+After merging a merge PR, you can safely delete the merge branch as it's no longer needed.
