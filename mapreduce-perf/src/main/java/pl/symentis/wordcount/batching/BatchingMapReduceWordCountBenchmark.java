@@ -1,14 +1,14 @@
-package pl.symentis.wordcount.parallel;
+package pl.symentis.wordcount.batching;
 
 import java.util.HashMap;
 import org.openjdk.jmh.annotations.*;
+import pl.symentis.mapreduce.batching.BatchingMapReduce;
 import pl.symentis.mapreduce.core.MapReduce;
-import pl.symentis.mapreduce.parallel.ParallelMapReduce;
 import pl.symentis.wordcount.core.Stopwords;
 import pl.symentis.wordcount.core.WordCount;
 
 @State(Scope.Benchmark)
-public class ParallelMapReduceWordCountBenchmark {
+public class BatchingMapReduceWordCountBenchmark {
 
     @Param({"pl.symentis.wordcount.stopwords.ICUThreadLocalStopwords"})
     public String stopwordsClass;
@@ -19,6 +19,9 @@ public class ParallelMapReduceWordCountBenchmark {
     @Param({"1000"})
     public int phaserMaxTasks;
 
+    @Param({"10000"})
+    public int batchSize;
+
     private WordCount wordCount;
     private MapReduce mapReduce;
 
@@ -28,9 +31,10 @@ public class ParallelMapReduceWordCountBenchmark {
         wordCount = new WordCount.Builder()
                 .withStopwords((Class<? extends Stopwords>) Class.forName(stopwordsClass))
                 .build();
-        mapReduce = new ParallelMapReduce.Builder()
+        mapReduce = new BatchingMapReduce.Builder()
                 .withPhaserMaxTasks(phaserMaxTasks)
                 .withThreadPoolSize(threadPoolMaxSize)
+                .withBatchSize(batchSize)
                 .build();
     }
 
@@ -43,7 +47,7 @@ public class ParallelMapReduceWordCountBenchmark {
     public Object countWords() throws Exception {
         HashMap<String, Long> map = new HashMap<String, Long>();
         mapReduce.run(
-                wordCount.input(ParallelMapReduceWordCountBenchmark.class.getResourceAsStream("/big.txt")),
+                wordCount.input(BatchingMapReduceWordCountBenchmark.class.getResourceAsStream("/big.txt")),
                 wordCount.mapper(),
                 wordCount.reducer(),
                 map::put);

@@ -9,5 +9,4 @@ public interface MapReduce {
             Output<ReducerKey, ReducerValue> output);
 
     void shutdown();
-
 }

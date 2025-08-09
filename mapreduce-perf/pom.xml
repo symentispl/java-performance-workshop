@@ -9,6 +9,14 @@
     </parent>
     <artifactId>mapreduce-perf</artifactId>
 
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- JMH version to use with this project. -->
+        <jmh.version>1.37</jmh.version>
+        <!-- Name of the benchmark Uber-JAR to generate. -->
+        <uberjar.name>benchmarks</uberjar.name>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.openjdk.jmh</groupId>
@@ -20,12 +28,6 @@
             <artifactId>jmh-generator-annprocess</artifactId>
             <version>${jmh.version}</version>
             <scope>provided</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>pl.project13.scala</groupId>
-            <artifactId>sbt-jmh-extras</artifactId>
-            <version>0.3.7</version>
         </dependency>
 
         <dependency>
@@ -41,16 +43,22 @@
         </dependency>
     </dependencies>
 
-    <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <!-- JMH version to use with this project. -->
-        <jmh.version>1.33</jmh.version>
-        <!-- Name of the benchmark Uber-JAR to generate. -->
-        <uberjar.name>benchmarks</uberjar.name>
-    </properties>
-
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.14.0</version>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.openjdk.jmh</groupId>
+                            <artifactId>jmh-generator-annprocess</artifactId>
+                            <version>${jmh.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
@@ -68,7 +76,13 @@
                                         implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <mainClass>org.openjdk.jmh.Main</mainClass>
                                 </transformer>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                             </transformers>
+                            <artifactSet>
+                                <excludes>
+                                    <exclude>org.openjdk.jmh:jmh-generator-annprocess</exclude>
+                                </excludes>
+                            </artifactSet>
                             <filters>
                                 <filter>
                                     <!-- Shading signed JARs will fail without this. http://stackoverflow.com/questions/999489/invalid-signature-file-when-attempting-to-run-a-jar -->

@@ -19,5 +19,4 @@ public final class IteratorInput<E> implements Input<E> {
     public E next() {
         return iterator.next();
     }
-
 }

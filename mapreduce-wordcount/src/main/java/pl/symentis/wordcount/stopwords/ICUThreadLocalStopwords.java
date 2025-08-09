@@ -2,11 +2,10 @@ package pl.symentis.wordcount.stopwords;
 
 import com.ibm.icu.text.CollationKey;
 import com.ibm.icu.text.Collator;
-import pl.symentis.wordcount.core.Stopwords;
-
 import java.io.*;
 import java.util.Locale;
 import java.util.TreeSet;
+import pl.symentis.wordcount.core.Stopwords;
 
 public class ICUThreadLocalStopwords implements Stopwords {
 
@@ -45,5 +44,4 @@ public class ICUThreadLocalStopwords implements Stopwords {
     public boolean contains(String str) {
         return stopwords.contains(threadLocalCollator.get().getCollationKey(str));
     }
-
 }

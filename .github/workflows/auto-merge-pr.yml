@@ -1,0 +1,255 @@
+name: Auto Merge PR
+
+on:
+  push:
+    branches: [ master, parallel, batching, workstealing, virtualthreads ]
+  workflow_dispatch:
+    inputs:
+      source_branch:
+        description: 'Source branch to merge from'
+        required: true
+        default: 'master'
+      target_branch:
+        description: 'Target branch to merge to'
+        required: true
+        default: 'parallel'
+
+env:
+  # Define the branch propagation chain
+  BRANCH_CHAIN: |
+    master=parallel
+    parallel=batching
+    batching=workstealing
+    workstealing=virtualthreads
+    virtualthreads=server
+
+jobs:
+  create-merge-pr:
+    runs-on: ubuntu-latest
+    if: github.ref != 'refs/heads/server'  # Don't trigger on server branch pushes
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch full history for merging
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Fetch all branches
+      run: |
+        git fetch --all
+        git branch -r | grep -v '\->' | while read remote; do
+          branch=${remote#origin/}
+          if [ "$branch" != "HEAD" ] && [[ "$branch" != cherry-pick* ]]; then
+            git branch --track "$branch" "$remote" 2>/dev/null || true
+          fi
+        done
+        echo "Available branches:"
+        git branch -a
+
+    - name: Configure Git
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+
+    - name: Determine source and target branches
+      id: branches
+      run: |
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          SOURCE_BRANCH="${{ github.event.inputs.source_branch }}"
+          TARGET_BRANCH="${{ github.event.inputs.target_branch }}"
+        else
+          # Get the branch that was pushed to
+          SOURCE_BRANCH=$(echo ${{ github.ref }} | sed 's/refs\/heads\///')
+          
+          # Find the target branch from the chain
+          TARGET_BRANCH=$(echo "$BRANCH_CHAIN" | grep "^${SOURCE_BRANCH}=" | cut -d'=' -f2)
+        fi
+        
+        if [ -z "$TARGET_BRANCH" ]; then
+          echo "No target branch defined for $SOURCE_BRANCH"
+          exit 0
+        fi
+        
+        echo "source_branch=$SOURCE_BRANCH" >> $GITHUB_OUTPUT
+        echo "target_branch=$TARGET_BRANCH" >> $GITHUB_OUTPUT
+        
+        echo "Source branch: $SOURCE_BRANCH"
+        echo "Target branch: $TARGET_BRANCH"
+
+    - name: Check if merge is needed
+      id: check_merge
+      if: steps.branches.outputs.target_branch != ''
+      run: |
+        SOURCE_BRANCH="${{ steps.branches.outputs.source_branch }}"
+        TARGET_BRANCH="${{ steps.branches.outputs.target_branch }}"
+        
+        # Check if target branch is already up to date with source
+        git checkout "$TARGET_BRANCH"
+        
+        # Check if source branch is ahead of target
+        BEHIND_COUNT=$(git rev-list --count "$TARGET_BRANCH".."origin/$SOURCE_BRANCH" 2>/dev/null || echo "0")
+        
+        if [ "$BEHIND_COUNT" = "0" ]; then
+          echo "Target branch $TARGET_BRANCH is already up to date with $SOURCE_BRANCH"
+          echo "needs_merge=false" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+        
+        echo "needs_merge=true" >> $GITHUB_OUTPUT
+        echo "commits_behind=$BEHIND_COUNT" >> $GITHUB_OUTPUT
+        
+        echo "$TARGET_BRANCH is $BEHIND_COUNT commits behind $SOURCE_BRANCH"
+
+    - name: Create merge branch and attempt merge
+      id: merge
+      if: steps.check_merge.outputs.needs_merge == 'true'
+      run: |
+        SOURCE_BRANCH="${{ steps.branches.outputs.source_branch }}"
+        TARGET_BRANCH="${{ steps.branches.outputs.target_branch }}"
+        TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+        MERGE_BRANCH="merge/${SOURCE_BRANCH}-to-${TARGET_BRANCH}-${TIMESTAMP}"
+        
+        echo "merge_branch=$MERGE_BRANCH" >> $GITHUB_OUTPUT
+        
+        # Checkout target branch and create merge branch
+        git checkout "$TARGET_BRANCH"
+        git checkout -b "$MERGE_BRANCH"
+        
+        # Attempt to merge source branch
+        echo "Attempting to merge $SOURCE_BRANCH into $MERGE_BRANCH"
+        
+        if git merge "origin/$SOURCE_BRANCH" --no-edit; then
+          echo "merge_success=true" >> $GITHUB_OUTPUT
+          echo "✅ Merge completed successfully"
+          
+          # Get merge commit details
+          MERGE_COMMIT=$(git rev-parse HEAD)
+          echo "merge_commit=$MERGE_COMMIT" >> $GITHUB_OUTPUT
+          
+          # Get list of commits that were merged
+          MERGED_COMMITS=$(git log --oneline "$TARGET_BRANCH"..HEAD)
+          echo "merged_commits<<EOF" >> $GITHUB_OUTPUT
+          echo "$MERGED_COMMITS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+        else
+          echo "merge_success=false" >> $GITHUB_OUTPUT
+          echo "❌ Merge conflicts detected"
+          
+          # Get list of conflicted files
+          CONFLICTED_FILES=$(git diff --name-only --diff-filter=U)
+          echo "conflicted_files<<EOF" >> $GITHUB_OUTPUT
+          echo "$CONFLICTED_FILES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+          # Abort the merge - we'll fail the workflow for manual resolution
+          git merge --abort
+          
+          echo "::error::Merge conflicts detected between $SOURCE_BRANCH and $TARGET_BRANCH"
+          echo "::error::Conflicted files: $CONFLICTED_FILES"
+          echo "::error::Please resolve conflicts manually"
+          exit 1
+        fi
+        
+        # Push the merge branch
+        git push origin "$MERGE_BRANCH"
+        echo "Pushed merge branch: $MERGE_BRANCH"
+
+    - name: Create Pull Request
+      if: steps.check_merge.outputs.needs_merge == 'true' && steps.merge.outputs.merge_success == 'true'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const sourceBranch = '${{ steps.branches.outputs.source_branch }}';
+          const targetBranch = '${{ steps.branches.outputs.target_branch }}';
+          const mergeBranch = '${{ steps.merge.outputs.merge_branch }}';
+          const commitsBehind = '${{ steps.check_merge.outputs.commits_behind }}';
+          const mergedCommits = `${{ steps.merge.outputs.merged_commits }}`;
+          
+          const title = `Merge: ${sourceBranch} → ${targetBranch} (${commitsBehind} commits)`;
+          
+          let body = `## 🔀 Auto Merge from ${sourceBranch} to ${targetBranch}
+          
+          This PR was automatically created to propagate commits through the branch chain:
+          \`master → parallel → batching → workstealing → virtualthreads → server\`
+          
+          ### Summary
+          - **Commits merged:** ${commitsBehind}
+          - **Merge status:** ✅ Success (no conflicts)
+          
+          ### Commits included:
+          \`\`\`
+          ${mergedCommits}
+          \`\`\`
+          
+          ### ✅ Ready to Merge
+          The merge was completed successfully without conflicts. This PR is ready for review and merge.
+          
+          ---
+          *This PR was automatically created by the Auto Merge workflow.*`;
+          
+          try {
+            const pr = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              head: mergeBranch,
+              base: targetBranch,
+              body: body
+            });
+            
+            // Add labels
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.data.number,
+              labels: ['auto-merge', 'ready-to-merge']
+            });
+            
+            console.log(`Created PR #${pr.data.number}: ${title}`);
+            console.log(`PR URL: ${pr.data.html_url}`);
+            
+            // Set output for summary
+            core.setOutput('pr_number', pr.data.number);
+            core.setOutput('pr_url', pr.data.html_url);
+            
+          } catch (error) {
+            console.error('Error creating PR:', error.message);
+            core.setFailed(`Failed to create PR: ${error.message}`);
+          }
+
+    - name: Create workflow summary
+      if: steps.check_merge.outputs.needs_merge == 'true'
+      run: |
+        SOURCE_BRANCH="${{ steps.branches.outputs.source_branch }}"
+        TARGET_BRANCH="${{ steps.branches.outputs.target_branch }}"
+        MERGE_SUCCESS="${{ steps.merge.outputs.merge_success }}"
+        COMMITS_BEHIND="${{ steps.check_merge.outputs.commits_behind }}"
+        
+        echo "## 🔀 Auto Merge Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Source:** \`$SOURCE_BRANCH\` → **Target:** \`$TARGET_BRANCH\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- **Commits to merge:** $COMMITS_BEHIND" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "$MERGE_SUCCESS" = "true" ]; then
+          PR_URL="${{ steps.create_pr.outputs.pr_url }}"
+          echo "- **Merge status:** ✅ Success" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "$PR_URL" != "" ]; then
+            echo "**[📋 View Pull Request]($PR_URL)**" >> $GITHUB_STEP_SUMMARY
+          fi
+        else
+          echo "- **Merge status:** ❌ Failed (conflicts detected)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Manual Action Required" >> $GITHUB_STEP_SUMMARY
+          echo "Merge conflicts were detected. Please resolve manually:" >> $GITHUB_STEP_SUMMARY
+          echo "1. \`git checkout $TARGET_BRANCH\`" >> $GITHUB_STEP_SUMMARY
+          echo "2. \`git merge $SOURCE_BRANCH\`" >> $GITHUB_STEP_SUMMARY
+          echo "3. Resolve conflicts and commit" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Branch Chain" >> $GITHUB_STEP_SUMMARY
+        echo "\`master → parallel → batching → workstealing → virtualthreads → server\`" >> $GITHUB_STEP_SUMMARY

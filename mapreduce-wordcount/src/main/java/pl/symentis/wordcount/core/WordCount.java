@@ -1,16 +1,15 @@
 package pl.symentis.wordcount.core;
 
-import pl.symentis.mapreduce.core.Input;
-import pl.symentis.mapreduce.core.Mapper;
-import pl.symentis.mapreduce.core.Output;
-import pl.symentis.mapreduce.core.Reducer;
+import static java.lang.String.format;
 
 import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.util.NoSuchElementException;
 import java.util.regex.Pattern;
-
-import static java.lang.String.format;
+import pl.symentis.mapreduce.core.Input;
+import pl.symentis.mapreduce.core.Mapper;
+import pl.symentis.mapreduce.core.Output;
+import pl.symentis.mapreduce.core.Reducer;
 
 public class WordCount {
 
@@ -29,11 +28,11 @@ public class WordCount {
                         .getMethod("from", InputStream.class)
                         .invoke(stopwordsClass, WordCount.class.getResourceAsStream("stopwords_en.txt"));
                 return new WordCount(stopwords);
-            } catch (IllegalAccessException |
-                    IllegalArgumentException |
-                    InvocationTargetException |
-                    NoSuchMethodException |
-                    SecurityException e) {
+            } catch (IllegalAccessException
+                    | IllegalArgumentException
+                    | InvocationTargetException
+                    | NoSuchMethodException
+                    | SecurityException e) {
                 throw new RuntimeException(format("cannot instantiate stopwords %s", stopwordsClass), e);
             }
         }
@@ -71,7 +70,6 @@ public class WordCount {
             }
             output.emit(k, sum);
         }
-
     }
 
     static final class WordCountMapper implements Mapper<String, String, Long> {
@@ -142,7 +140,5 @@ public class WordCount {
             }
             throw new NoSuchElementException();
         }
-
     }
-
 }

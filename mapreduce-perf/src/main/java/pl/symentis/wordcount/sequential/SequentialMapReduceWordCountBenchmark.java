@@ -1,13 +1,12 @@
 package pl.symentis.wordcount.sequential;
 
+import java.util.HashMap;
 import org.openjdk.jmh.annotations.*;
 import pl.symentis.mapreduce.core.MapReduce;
 import pl.symentis.mapreduce.core.MapperOutput;
 import pl.symentis.mapreduce.core.SequentialMapReduce;
 import pl.symentis.wordcount.core.Stopwords;
 import pl.symentis.wordcount.core.WordCount;
-
-import java.util.HashMap;
 
 @State(Scope.Benchmark)
 public class SequentialMapReduceWordCountBenchmark {
@@ -24,12 +23,10 @@ public class SequentialMapReduceWordCountBenchmark {
     @SuppressWarnings("unchecked")
     @Setup(Level.Trial)
     public void setUp() throws Exception {
-        wordCount = new WordCount
-                .Builder()
+        wordCount = new WordCount.Builder()
                 .withStopwords((Class<? extends Stopwords>) Class.forName(stopwordsClass))
                 .build();
-        mapReduce = new SequentialMapReduce
-                .Builder()
+        mapReduce = new SequentialMapReduce.Builder()
                 .withMapperOutput((Class<? extends MapperOutput<?, ?>>) Class.forName(mapperOutputClass))
                 .build();
     }
@@ -45,8 +42,8 @@ public class SequentialMapReduceWordCountBenchmark {
         mapReduce.run(
                 wordCount.input(SequentialMapReduceWordCountBenchmark.class.getResourceAsStream("/big.txt")),
                 wordCount.mapper(),
-                wordCount.reducer(), map::put);
+                wordCount.reducer(),
+                map::put);
         return map;
     }
-
 }

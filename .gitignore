@@ -6,4 +6,5 @@ target
 *.iml
 .idea/
 .vscode/
-jvmperformance-workshop
+.local/
+.task/

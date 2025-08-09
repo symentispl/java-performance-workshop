@@ -1,16 +1,14 @@
 package pl.symentis.wordcount.core;
 
-import org.junit.jupiter.api.Test;
-import pl.symentis.mapreduce.core.MapReduce;
-import pl.symentis.mapreduce.core.SequentialMapReduce;
-import pl.symentis.wordcount.core.WordCount;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.HashMap;
 import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
+import pl.symentis.mapreduce.core.MapReduce;
+import pl.symentis.mapreduce.core.SequentialMapReduce;
 
 public interface WordCountMapReduceTest {
 
