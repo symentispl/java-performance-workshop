@@ -1,5 +1,6 @@
 package pl.symentis.wordcount.virtualthreads;
 
+import java.util.HashMap;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Param;
@@ -11,8 +12,6 @@ import pl.symentis.mapreduce.core.MapReduce;
 import pl.symentis.mapreduce.virtualthreads.VirtualThreadsMapReduce;
 import pl.symentis.wordcount.core.Stopwords;
 import pl.symentis.wordcount.core.WordCount;
-
-import java.util.HashMap;
 
 @State(Scope.Benchmark)
 public class VirtualThreadsMapReduceWordCountBenchmark {

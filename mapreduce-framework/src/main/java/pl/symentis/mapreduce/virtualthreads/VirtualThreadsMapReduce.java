@@ -1,13 +1,6 @@
 package pl.symentis.mapreduce.virtualthreads;
 
-import pl.symentis.mapreduce.core.HashMapOutput;
-import pl.symentis.mapreduce.core.Input;
-import pl.symentis.mapreduce.core.IteratorInput;
-import pl.symentis.mapreduce.core.MapReduce;
-import pl.symentis.mapreduce.core.MapReduceException;
-import pl.symentis.mapreduce.core.Mapper;
-import pl.symentis.mapreduce.core.Output;
-import pl.symentis.mapreduce.core.Reducer;
+import static java.util.stream.Collectors.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,8 +12,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Phaser;
 import java.util.concurrent.TimeUnit;
-
-import static java.util.stream.Collectors.*;
+import pl.symentis.mapreduce.core.HashMapOutput;
+import pl.symentis.mapreduce.core.Input;
+import pl.symentis.mapreduce.core.IteratorInput;
+import pl.symentis.mapreduce.core.MapReduce;
+import pl.symentis.mapreduce.core.MapReduceException;
+import pl.symentis.mapreduce.core.Mapper;
+import pl.symentis.mapreduce.core.Output;
+import pl.symentis.mapreduce.core.Reducer;
 
 public class VirtualThreadsMapReduce implements MapReduce {
 

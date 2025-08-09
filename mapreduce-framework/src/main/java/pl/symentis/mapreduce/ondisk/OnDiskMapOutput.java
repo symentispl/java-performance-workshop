@@ -1,7 +1,6 @@
 package pl.symentis.mapreduce.ondisk;
 
-import org.apache.commons.io.input.CloseShieldInputStream;
-import pl.symentis.mapreduce.core.MapperOutput;
+import static java.util.Collections.emptyIterator;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -13,8 +12,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
-
-import static java.util.Collections.emptyIterator;
+import org.apache.commons.io.input.CloseShieldInputStream;
+import pl.symentis.mapreduce.core.MapperOutput;
 
 /**
  * Naive implementation, which keeps a key values in bucket, which is append only file.
@@ -40,7 +39,10 @@ public class OnDiskMapOutput<K, V> implements MapperOutput<K, V> {
             try {
                 var newEntry = queue.poll(1, TimeUnit.SECONDS);
                 if (newEntry != null) {
-                    var uuidPath = keyFiles().computeIfAbsent(newEntry.getKey(), (k) -> Paths.get(UUID.randomUUID().toString()));
+                    var uuidPath = keyFiles()
+                            .computeIfAbsent(
+                                    newEntry.getKey(),
+                                    (k) -> Paths.get(UUID.randomUUID().toString()));
                     tryWriteKey(uuidPath, newEntry.getKey());
                     appendValue(uuidPath, newEntry.getValue());
                 }
@@ -53,8 +55,9 @@ public class OnDiskMapOutput<K, V> implements MapperOutput<K, V> {
     private void appendValue(Path uuidPath, V value) {
         var filename = uuidPath.toString() + ".values";
         var path = baseDir.resolve(filename);
-        try (var os = Files.newOutputStream(path, StandardOpenOption.CREATE, StandardOpenOption.APPEND, StandardOpenOption.WRITE);
-             var oo = new ObjectOutputStream(os)) {
+        try (var os = Files.newOutputStream(
+                        path, StandardOpenOption.CREATE, StandardOpenOption.APPEND, StandardOpenOption.WRITE);
+                var oo = new ObjectOutputStream(os)) {
             oo.writeObject(value);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -66,7 +69,7 @@ public class OnDiskMapOutput<K, V> implements MapperOutput<K, V> {
         var path = baseDir.resolve(filename);
         if (!Files.exists(path)) {
             try (var os = Files.newOutputStream(path, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
-                 var oo = new ObjectOutputStream(os)) {
+                    var oo = new ObjectOutputStream(os)) {
                 oo.writeObject(key);
             } catch (IOException e) {
                 throw new UncheckedIOException(e);
@@ -93,7 +96,7 @@ public class OnDiskMapOutput<K, V> implements MapperOutput<K, V> {
             var map = new HashMap<K, Path>();
             for (var keyFile : keyFiles) {
                 try (var inputStream = Files.newInputStream(keyFile, StandardOpenOption.READ);
-                     var oi = new ObjectInputStream(inputStream)) {
+                        var oi = new ObjectInputStream(inputStream)) {
                     var key = (K) oi.readObject();
                     map.put(key, Path.of(withoutExtension(keyFile.getFileName())));
                 }

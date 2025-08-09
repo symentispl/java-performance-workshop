@@ -1,13 +1,12 @@
 package pl.symentis.mapreduce.forkjoin;
 
-import pl.symentis.mapreduce.core.*;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.RecursiveTask;
+import pl.symentis.mapreduce.core.*;
 
 public class ForkJoinMapReduce implements MapReduce {
 
@@ -23,17 +22,13 @@ public class ForkJoinMapReduce implements MapReduce {
 
     @Override
     public <In, MK, MV, RK, RV> void run(
-            Input<In> input,
-            Mapper<In, MK, MV> mapper,
-            Reducer<MK, MV, RK, RV> reducer,
-            Output<RK, RV> output) {
+            Input<In> input, Mapper<In, MK, MV> mapper, Reducer<MK, MV, RK, RV> reducer, Output<RK, RV> output) {
 
         Map<MK, List<MV>> map = pool.invoke(new InputTask<In, MK, MV>(input, mapper));
 
         for (Map.Entry<MK, List<MV>> entry : map.entrySet()) {
             reducer.reduce(entry.getKey(), () -> entry.getValue().iterator(), output);
         }
-
     }
 
     private final class InputTask<I, K, V> extends RecursiveTask<Map<K, List<V>>> {
@@ -96,21 +91,20 @@ public class ForkJoinMapReduce implements MapReduce {
         protected Map<K, List<V>> compute() {
             HashMap<K, List<V>> map = new HashMap<>();
             for (I elem : batch) {
-                mapper.map(elem, (k, v) -> map.compute(k, (key, oldValue) -> {
-                    if (oldValue == null) {
-                        oldValue = new ArrayList<>();
-                    }
-                    oldValue.add(v);
-                    return oldValue;
-                }));
+                mapper.map(
+                        elem,
+                        (k, v) -> map.compute(k, (key, oldValue) -> {
+                            if (oldValue == null) {
+                                oldValue = new ArrayList<>();
+                            }
+                            oldValue.add(v);
+                            return oldValue;
+                        }));
             }
             return map;
         }
     }
 
     @Override
-    public void shutdown() {
-
-    }
-
+    public void shutdown() {}
 }
