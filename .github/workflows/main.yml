@@ -1,22 +1,57 @@
 name: Java CI
 
-on: [push]
+on: [push, pull_request]
 
 permissions:
   contents: write
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v3.3.0
-      - name: Set up JDK
-        uses: actions/setup-java@v2
+      - uses: actions/checkout@v4
+      - name: Set up JDK 24
+        uses: actions/setup-java@v4
         with:
           java-version: '24'
           distribution: 'temurin'
-      - name: Build with Maven
-        run: ./mvnw --batch-mode --update-snapshots verify
+      
+      - name: Install Task (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: |
+          sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d ~/.local/bin
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      
+      - name: Install Task (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          winget install Task.Task
+          echo "C:\Program Files\Task" >> $env:GITHUB_PATH
+      
+      - name: Verify Task installation
+        run: task --version
+      
+      - name: Build project
+        run: task build
+      
+      - name: Run benchmarks (smoke test)
+        run: |
+          java -jar mapreduce-perf/target/benchmarks.jar -wi 1 -i 1 -f 1
+  
+  dependency-graph:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 24
+        uses: actions/setup-java@v4
+        with:
+          java-version: '24'
+          distribution: 'temurin'
       - name: Update dependency graph
         uses: advanced-security/maven-dependency-submission-action@v4.1.1
