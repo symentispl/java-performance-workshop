@@ -14,7 +14,7 @@ import java.nio.file.StandardWatchEventKinds;
 import java.util.concurrent.Executors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import pl.symentis.mapreduce.batching.BatchingParallelMapReduce;
+import pl.symentis.mapreduce.batching.BatchingMapReduce;
 
 @Command(name = "bootstrap")
 public class Bootstrap implements Runnable {
@@ -53,7 +53,7 @@ public class Bootstrap implements Runnable {
             var watchService = FileSystems.getDefault().newWatchService();
             var watchKey = jobsDir.register(watchService, StandardWatchEventKinds.ENTRY_CREATE);
             LOG.info("initilizing map reduce framework");
-            var mapReduce = new BatchingParallelMapReduce.Builder()
+            var mapReduce = new BatchingMapReduce.Builder()
                     .withBatchSize(1000)
                     .withPhaserMaxTasks(10000)
                     .withThreadPoolSize(Runtime.getRuntime().availableProcessors())

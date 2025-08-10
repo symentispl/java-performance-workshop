@@ -1,7 +1,14 @@
 package pl.symentis.wordcount.batching;
 
 import java.util.HashMap;
-import org.openjdk.jmh.annotations.*;
+
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.Level;
+import org.openjdk.jmh.annotations.Param;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
+import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.TearDown;
 import pl.symentis.mapreduce.batching.BatchingMapReduce;
 import pl.symentis.mapreduce.core.MapReduce;
 import pl.symentis.wordcount.core.Stopwords;
@@ -45,7 +52,7 @@ public class BatchingMapReduceWordCountBenchmark {
 
     @Benchmark
     public Object countWords() throws Exception {
-        HashMap<String, Long> map = new HashMap<String, Long>();
+        HashMap<String, Long> map = new HashMap<>();
         mapReduce.run(
                 wordCount.input(BatchingMapReduceWordCountBenchmark.class.getResourceAsStream("/big.txt")),
                 wordCount.mapper(),

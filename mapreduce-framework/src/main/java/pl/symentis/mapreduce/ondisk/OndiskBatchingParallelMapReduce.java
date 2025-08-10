@@ -1,32 +1,23 @@
-package pl.symentis.mapreduce.virtualthreads;
+package pl.symentis.mapreduce.ondisk;
 
 import static java.util.stream.Collectors.*;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
-import java.util.Set;
-import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Phaser;
-import java.util.concurrent.TimeUnit;
-import pl.symentis.mapreduce.core.HashMapOutput;
-import pl.symentis.mapreduce.core.Input;
-import pl.symentis.mapreduce.core.IteratorInput;
-import pl.symentis.mapreduce.core.MapReduce;
-import pl.symentis.mapreduce.core.MapReduceException;
-import pl.symentis.mapreduce.core.Mapper;
-import pl.symentis.mapreduce.core.Output;
-import pl.symentis.mapreduce.core.Reducer;
+import java.util.*;
+import java.util.concurrent.*;
+import pl.symentis.mapreduce.core.*;
 
-public class VirtualThreadsMapReduce implements MapReduce {
+public class OndiskBatchingParallelMapReduce implements MapReduce {
 
     public static class Builder {
 
+        private int threadPoolMaxSize = Runtime.getRuntime().availableProcessors();
         private int phaserMaxTasks = 1000;
         private int batchSize = 10000;
+
+        public Builder withThreadPoolSize(int threadPoolMaxSize) {
+            this.threadPoolMaxSize = threadPoolMaxSize;
+            return this;
+        }
 
         public Builder withPhaserMaxTasks(int phaserMaxTasks) {
             this.phaserMaxTasks = phaserMaxTasks;
@@ -39,7 +30,7 @@ public class VirtualThreadsMapReduce implements MapReduce {
         }
 
         public MapReduce build() {
-            return new VirtualThreadsMapReduce(phaserMaxTasks, batchSize);
+            return new OndiskBatchingParallelMapReduce(threadPoolMaxSize, phaserMaxTasks, batchSize);
         }
     }
 
@@ -47,8 +38,8 @@ public class VirtualThreadsMapReduce implements MapReduce {
     private final int phaserMaxTasks;
     private final int batchSize;
 
-    public VirtualThreadsMapReduce(int phaserMaxTasks, int batchSize) {
-        this.executorService = Executors.newVirtualThreadPerTaskExecutor();
+    public OndiskBatchingParallelMapReduce(int threadPoolMaxSize, int phaserMaxTasks, int batchSize) {
+        this.executorService = Executors.newFixedThreadPool(threadPoolMaxSize);
         this.phaserMaxTasks = phaserMaxTasks;
         this.batchSize = batchSize;
     }
@@ -119,7 +110,7 @@ public class VirtualThreadsMapReduce implements MapReduce {
                                     reducer.reduce(entry.getKey(), entry.getValue(), out);
                                     return entry.getValue();
                                 },
-                                reducing(new ArrayList<>(), VirtualThreadsMapReduce::sum))));
+                                reducing(new ArrayList<>(), OndiskBatchingParallelMapReduce::sum))));
     }
 
     @Override
