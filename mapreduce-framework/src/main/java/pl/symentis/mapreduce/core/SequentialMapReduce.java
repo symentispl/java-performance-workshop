@@ -32,7 +32,7 @@ public class SequentialMapReduce implements MapReduce {
                         | NoSuchMethodException
                         | SecurityException e) {
                     throw new IllegalArgumentException(
-                            format("cannot instatiate mapper output class %s", mapperOutputClass), e);
+                            format("cannot instantiate mapper output class %s", mapperOutputClass), e);
                 }
             };
 
