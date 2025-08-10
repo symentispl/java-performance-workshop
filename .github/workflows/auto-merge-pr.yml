@@ -21,7 +21,8 @@ env:
     parallel=batching
     batching=workstealing
     workstealing=virtualthreads
-    virtualthreads=server
+    virtualthreads=ondisk
+    ondisk=server
 
 jobs:
   create-merge-pr:
