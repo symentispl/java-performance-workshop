@@ -56,7 +56,7 @@ tasks:
     cmds:
       - cmd: ./mvnw --batch-mode --update-snapshots clean verify
         platforms: [linux, darwin]
-      - cmd: .\mvnw.cmd --batch-mode --update-snapshots clean verify
+      - cmd: cmd /c "mvnw.cmd --batch-mode --update-snapshots clean verify"
         platforms: [windows]
     sources:
       - "pom.xml"
