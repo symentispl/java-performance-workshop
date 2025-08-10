@@ -30,8 +30,11 @@ jobs:
       - name: Install Task (Windows)
         if: runner.os == 'Windows'
         run: |
-          winget install Task.Task
-          echo "C:\Program Files\Task" >> $env:GITHUB_PATH
+          powershell -Command "Invoke-WebRequest -Uri https://github.com/go-task/task/releases/latest/download/task_windows_amd64.zip -OutFile task.zip"
+          powershell -Command "Expand-Archive -Path task.zip -DestinationPath ."
+          mkdir -p $env:USERPROFILE\.local\bin
+          move task.exe $env:USERPROFILE\.local\bin\
+          echo "$env:USERPROFILE\.local\bin" >> $env:GITHUB_PATH
       
       - name: Verify Task installation
         run: task --version
