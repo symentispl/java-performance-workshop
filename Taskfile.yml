@@ -54,7 +54,10 @@ tasks:
   build:
     desc: "Build the project with Maven"
     cmds:
-      - ./mvnw --batch-mode --update-snapshots clean verify
+      - cmd: ./mvnw --batch-mode --update-snapshots clean verify
+        platforms: [linux, darwin]
+      - cmd: cmd /c "mvnw.cmd --batch-mode --update-snapshots clean verify"
+        platforms: [windows]
     sources:
       - "pom.xml"
       - "**/src/main/java/**"
