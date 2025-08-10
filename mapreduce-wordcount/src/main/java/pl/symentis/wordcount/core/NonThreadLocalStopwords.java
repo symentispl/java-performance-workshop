@@ -12,13 +12,12 @@ public class NonThreadLocalStopwords implements Stopwords {
 
     public static Stopwords from(InputStream inputStream) {
         Collator collator = Collator.getInstance(Locale.ENGLISH);
-        TreeSet<CollationKey> stopwords = new TreeSet<>();
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
-            reader.lines().map(collator::getCollationKey).collect(() -> stopwords, TreeSet::add, TreeSet::addAll);
+            return new NonThreadLocalStopwords(
+                    reader.lines().map(collator::getCollationKey).collect(TreeSet::new, TreeSet::add, TreeSet::addAll));
         } catch (IOException e) {
-            throw new IOError(e);
+            throw new UncheckedIOException(e);
         }
-        return new NonThreadLocalStopwords(stopwords);
     }
 
     private NonThreadLocalStopwords(TreeSet<CollationKey> stopwords) {
