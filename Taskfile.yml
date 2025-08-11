@@ -116,6 +116,6 @@ tasks:
       - cmd: java -jar {{.BENCHMARKS_JAR}} {{.CLI_ARGS}} -wi 5 -i 5 -f 1 -prof "async:libPath={{.ASYNC_PROFILER_DIR}}/lib/libasyncProfiler.so;output=flamegraph;event=cpu;dir={{.BENCHMARKS_OUTPUT_DIR}}"
         platforms: [ linux ]
       - cmd: java -jar {{.BENCHMARKS_JAR}} {{.CLI_ARGS}} -wi 5 -i 5 -f 1 -prof "async:libPath={{.ASYNC_PROFILER_DIR}}/lib/libasyncProfiler.dylib;output=flamegraph;event=cpu;dir={{.BENCHMARKS_OUTPUT_DIR}}"
-platforms: [ darwin ]
+        platforms: [ darwin ]
       - cmd: java -jar {{.BENCHMARKS_JAR}} {{.CLI_ARGS}} -wi 5 -i 5 -f 1 -prof "jfr:dir={{.BENCHMARKS_OUTPUT_DIR}}"
         platforms: [ windows ]
