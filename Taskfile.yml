@@ -7,56 +7,48 @@ vars:
 
 tasks:
 
-  download-async-profiler-linux-x64:
-    desc: "Install async-profiler (Linux x64)"
-    platforms:
-      - linux
+  download-async-profiler:
+    desc: "Install async-profiler"
     vars:
       ASYNC_PROFILER_VERSION: "4.1"
-      ASYNC_PROFILER_URL: "https://github.com/async-profiler/async-profiler/releases/download/v{{.ASYNC_PROFILER_VERSION}}/async-profiler-{{.ASYNC_PROFILER_VERSION}}-linux-x64.tar.gz"
-      ASYNC_PROFILER_ARCHIVE: "async-profiler-{{.ASYNC_PROFILER_VERSION}}-linux-x64.tar.gz"
+      ASYNC_PROFILER_LINUX_X86_URL: "https://github.com/async-profiler/async-profiler/releases/download/v{{.ASYNC_PROFILER_VERSION}}/async-profiler-{{.ASYNC_PROFILER_VERSION}}-linux-x64.tar.gz"
+      ASYNC_PROFILER_LINUX_X86_ARCHIVE: "async-profiler-{{.ASYNC_PROFILER_VERSION}}-linux-x64.tar.gz"
+      ASYNC_PROFILER_MACOS_URL: "https://github.com/async-profiler/async-profiler/releases/download/v{{.ASYNC_PROFILER_VERSION}}/async-profiler-{{.ASYNC_PROFILER_VERSION}}-macos.zip"
+      ASYNC_PROFILER_MACOS_ARCHIVE: "async-profiler-{{.ASYNC_PROFILER_VERSION}}-macos.zip"
       VERSION_FILE: "{{.ASYNC_PROFILER_DIR}}/.version"
     cmds:
-      - curl -L -o {{.ASYNC_PROFILER_ARCHIVE}} {{.ASYNC_PROFILER_URL}}
-      - rm -rf {{.ASYNC_PROFILER_DIR}}
-      - mkdir -p {{.ASYNC_PROFILER_DIR}}
-      - tar xzf {{.ASYNC_PROFILER_ARCHIVE}} --strip-components=1 -C {{.ASYNC_PROFILER_DIR}}
-      - echo "{{.ASYNC_PROFILER_VERSION}}" > {{.VERSION_FILE}}
-      - rm {{.ASYNC_PROFILER_ARCHIVE}}
-    sources:
-      - Taskfile.yml
-    generates:
-      - "{{.ASYNC_PROFILER_DIR}}/lib/libasyncProfiler.so"
-    status:
-      - test -f "{{.VERSION_FILE}}" && test "$(cat {{.VERSION_FILE}})" = "{{.ASYNC_PROFILER_VERSION}}"
-  download-async-profiler-macos:
-    desc: "Install async-profiler (MacOS)"
-    platforms:
-      - linux
-    vars:
-      ASYNC_PROFILER_VERSION: "4.1"
-      ASYNC_PROFILER_URL: "https://github.com/async-profiler/async-profiler/releases/download/v{{.ASYNC_PROFILER_VERSION}}/async-profiler-{{.ASYNC_PROFILER_VERSION}}-linux-x64.tar.gz"
-      ASYNC_PROFILER_ARCHIVE: "async-profiler-{{.ASYNC_PROFILER_VERSION}}-macos.zip"
-      VERSION_FILE: "{{.ASYNC_PROFILER_DIR}}/.version"
-    cmds:
-      - curl -L -o {{.ASYNC_PROFILER_ARCHIVE}} {{.ASYNC_PROFILER_URL}}
-      - rm -rf {{.ASYNC_PROFILER_DIR}}
-      - mkdir -p {{.ASYNC_PROFILER_DIR}}
-      - tar xzf {{.ASYNC_PROFILER_ARCHIVE}} --strip-components=1 -C {{.ASYNC_PROFILER_DIR}}
-      - echo "{{.ASYNC_PROFILER_VERSION}}" > {{.VERSION_FILE}}
-      - rm {{.ASYNC_PROFILER_ARCHIVE}}
-    sources:
-      - Taskfile.yml
-    generates:
-      - "{{.ASYNC_PROFILER_DIR}}/lib/libasyncProfiler.so"
+      - cmd: |
+          curl -L -o {{.ASYNC_PROFILER_LINUX_X86_ARCHIVE}} {{.ASYNC_PROFILER_LINUX_X86_URL}}
+          rm -rf {{.ASYNC_PROFILER_DIR}}
+          mkdir -p {{.ASYNC_PROFILER_DIR}}
+          tar xzf {{.ASYNC_PROFILER_LINUX_X86_ARCHIVE}} --strip-components=1 -C {{.ASYNC_PROFILER_DIR}}
+          echo "{{.ASYNC_PROFILER_VERSION}}" > {{.VERSION_FILE}}
+          rm {{.ASYNC_PROFILER_LINUX_X86_ARCHIVE}}
+        platforms: [linux]
+        generates: "{{.ASYNC_PROFILER_DIR}}/lib/libasyncProfiler.so"
+      - cmd: |
+          curl -L -o {{.ASYNC_PROFILER_MACOS_ARCHIVE}} {{.ASYNC_PROFILER_MACOS_URL}}
+          rm -rf {{.ASYNC_PROFILER_DIR}}
+          mkdir -p {{.ASYNC_PROFILER_DIR}}
+          unzip {{.ASYNC_PROFILER_MACOS_ARCHIVE}} -d {{.ASYNC_PROFILER_DIR}}
+          mv {{.ASYNC_PROFILER_DIR}}/async-profiler-{{.ASYNC_PROFILER_VERSION}}-macos/* {{.ASYNC_PROFILER_DIR}}/
+          rmdir {{.ASYNC_PROFILER_DIR}}/async-profiler-{{.ASYNC_PROFILER_VERSION}}-macos
+          echo "{{.ASYNC_PROFILER_VERSION}}" > {{.VERSION_FILE}}
+          rm {{.ASYNC_PROFILER_MACOS_ARCHIVE}}
+        platforms: [darwin]
+        generates: "{{.ASYNC_PROFILER_DIR}}/lib/libasyncProfiler.dylib"
     status:
       - test -f "{{.VERSION_FILE}}" && test "$(cat {{.VERSION_FILE}})" = "{{.ASYNC_PROFILER_VERSION}}"
   build:
     desc: "Build the project with Maven"
     cmds:
-      - ./mvnw --batch-mode --update-snapshots clean verify
+      - cmd: ./mvnw --batch-mode --update-snapshots clean verify
+        platforms: [linux, darwin]
+      - cmd: cmd /c "mvnw.cmd --batch-mode --update-snapshots clean verify"
+        platforms: [windows]
     sources:
       - "pom.xml"
+      - "**/pom.xml"
       - "**/src/main/java/**"
       - "**/src/test/java/**"
     generates:
@@ -67,7 +59,7 @@ tasks:
     deps:
       - build
     cmds:
-      - java -jar mapreduce-perf/target/benchmarks.jar -wi 5 -i 5 -f 1
+      - java -jar {{.CLI_ARGS}} mapreduce-perf/target/benchmarks.jar -wi 5 -i 5 -f 1
   stop-words-benchmarks:
     desc: "Run benchmarks for Stopwords"
     deps:
@@ -121,7 +113,9 @@ tasks:
       - download-async-profiler
       - build
     cmds:
-      - |
-        java -jar {{.BENCHMARKS_JAR}} \
-        -wi 5 -i 5 -f 1 \
-        -prof "async:libPath={{.ASYNC_PROFILER_DIR}}/lib/libasyncProfiler.so;output=flamegraph;event=cpu;dir={{.BENCHMARKS_OUTPUT_DIR}}"
+      - cmd: java -jar {{.BENCHMARKS_JAR}} {{.CLI_ARGS}} -wi 5 -i 5 -f 1 -prof "async:libPath={{.ASYNC_PROFILER_DIR}}/lib/libasyncProfiler.so;output=flamegraph;event=cpu;dir={{.BENCHMARKS_OUTPUT_DIR}}"
+        platforms: [ linux ]
+      - cmd: java -jar {{.BENCHMARKS_JAR}} {{.CLI_ARGS}} -wi 5 -i 5 -f 1 -prof "async:libPath={{.ASYNC_PROFILER_DIR}}/lib/libasyncProfiler.dylib;output=flamegraph;event=cpu;dir={{.BENCHMARKS_OUTPUT_DIR}}"
+platforms: [ darwin ]
+      - cmd: java -jar {{.BENCHMARKS_JAR}} {{.CLI_ARGS}} -wi 5 -i 5 -f 1 -prof "jfr:dir={{.BENCHMARKS_OUTPUT_DIR}}"
+        platforms: [ windows ]
