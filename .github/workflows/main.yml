@@ -19,14 +19,14 @@ jobs:
         with:
           java-version: '24'
           distribution: 'temurin'
-      
+
       - name: Install Task (Linux/macOS)
         if: runner.os != 'Windows'
         run: |
           mkdir -p ~/.local/bin
           sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b ~/.local/bin
           echo "$HOME/.local/bin" >> $GITHUB_PATH
-      
+
       - name: Install Task (Windows)
         if: runner.os == 'Windows'
         run: |
@@ -35,17 +35,23 @@ jobs:
           mkdir -p $env:USERPROFILE\.local\bin
           move task.exe $env:USERPROFILE\.local\bin\
           echo "$env:USERPROFILE\.local\bin" >> $env:GITHUB_PATH
-      
+
       - name: Verify Task installation
         run: task --version
-      
+
       - name: Build project
         run: task build
+
+      - name: Test async profiler installation
+        if: runner.os != 'Windows'
+        run: |
+          task download-async-profiler
+          test -d .local/async-profiler && test "$(ls -A .local/async-profiler)" || exit 1
 
   dependency-graph:
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
-    
+
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK 24
