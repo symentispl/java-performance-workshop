@@ -55,13 +55,13 @@ tasks:
       - "**/target/classes/**"
       - "**/target/test-classes/**"
   run-benchmarks:
-    desc: "Run benchmarks"
+    desc: "Run benchmarks (use '-- [benchmark name]' to run selected benchmarks)"
     deps:
       - build
     cmds:
       - java -jar {{.CLI_ARGS}} mapreduce-perf/target/benchmarks.jar -wi 5 -i 5 -f 1
   profile-benchmarks:
-    desc: "Profile benchmarks using async-profiler"
+    desc: "Profile benchmarks using async-profiler (of JFR under Windows) (use '-- [benchmark name]' to run selected benchmarks)"
     deps:
       - download-async-profiler
       - build
