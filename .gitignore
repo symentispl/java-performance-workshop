@@ -6,5 +6,6 @@ target
 *.iml
 .idea/
 .vscode/
-jvmperformance-workshop
-.envrc
+.local/
+.task/
+dependency-reduced-pom.xml
