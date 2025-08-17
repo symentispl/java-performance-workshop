@@ -4,7 +4,7 @@ import com.github.rvesse.airline.annotations.Cli;
 
 @Cli(
         name = "mapreduce",
-        commands = {Bootstrap.class, Bench.class})
+        commands = {ServerCommand.class, BenchCommand.class})
 public class Main {
     public static void main(String[] args) {
         new com.github.rvesse.airline.Cli<Runnable>(Main.class).parse(args).run();
