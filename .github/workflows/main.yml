@@ -41,6 +41,8 @@ jobs:
 
       - name: Build project
         run: task build
+        env:
+          MAVEN_OPTS: "-DskipDocker=true"
 
       - name: Test async profiler installation
         if: runner.os != 'Windows'

@@ -104,5 +104,20 @@
         <module>mapreduce-wordcount-bundle</module>
         <module>mapreduce-platform</module>
     </modules>
+
+    <profiles>
+        <profile>
+            <id>skip-docker</id>
+            <activation>
+                <property>
+                    <name>skipDocker</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <docker.skip>true</docker.skip>
+            </properties>
+        </profile>
+    </profiles>
 </project>
 

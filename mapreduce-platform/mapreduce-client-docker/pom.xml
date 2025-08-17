@@ -103,6 +103,7 @@
                     </execution>
                 </executions>
                 <configuration>
+                    <skip>${docker.skip}</skip>
                     <images>
                         <image>
                             <name>mapreduce-client:${project.version}</name>

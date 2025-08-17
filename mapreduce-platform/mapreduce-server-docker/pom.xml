@@ -72,6 +72,7 @@
                     </execution>
                 </executions>
                 <configuration>
+                    <skip>${docker.skip}</skip>
                     <images>
                         <image>
                             <name>mapreduce-server:${project.version}</name>
