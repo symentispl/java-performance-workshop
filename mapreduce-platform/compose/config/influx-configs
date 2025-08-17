@@ -1,0 +1,5 @@
+[default]
+  url = "http://localhost:8086"
+  token = "qdP2pk0pLtsFAdahQAa8uhyN_ezdg5X0KXTDhcu6AYOAxK-AnKS9fQHlYWiacDN6jSoGzv8VXCfsmYbzMdUk2A=="
+  org = "symentis"
+  active = true

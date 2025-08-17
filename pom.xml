@@ -102,6 +102,7 @@
         <module>mapreduce-perf</module>
         <module>mapreduce-server</module>
         <module>mapreduce-wordcount-bundle</module>
+        <module>mapreduce-platform</module>
     </modules>
 </project>
 
