@@ -1,6 +1,8 @@
 package pl.symentis.mapreduce.server;
 
 import com.google.gson.Gson;
+import io.javalin.Javalin;
+import io.javalin.http.Context;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URL;
@@ -8,9 +10,6 @@ import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.WatchEvent;
-import java.nio.file.WatchKey;
-import java.nio.file.WatchService;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.ServiceLoader;
@@ -25,27 +24,21 @@ import pl.symentis.mapreduce.core.MapReduce;
 class Server {
 
     private static final Logger LOG = LoggerFactory.getLogger(Server.class);
-    private final Path jobsDir;
-    private final WatchService watchService;
-    private final WatchKey watchKey;
+    private final Javalin app;
+    private final int port;
     private final ScheduledExecutorService executorService;
     private final Gson gson;
     private final MapReduce mapReduce;
 
-    public Server(
-            Path jobsDir,
-            WatchService watchService,
-            WatchKey watchKey,
-            ScheduledExecutorService executorService,
-            Gson gson,
-            MapReduce mapReduce) {
+    public Server(Javalin app, int port, ScheduledExecutorService executorService, Gson gson, MapReduce mapReduce) {
 
-        this.jobsDir = jobsDir;
-        this.watchService = watchService;
-        this.watchKey = watchKey;
+        this.app = app;
+        this.port = port;
         this.executorService = executorService;
         this.gson = gson;
         this.mapReduce = mapReduce;
+
+        this.app.post("/jobs", this::handleJobRequest);
     }
 
     private static Job loadJob(Path codeUri, Map<String, String> context) {
@@ -73,11 +66,13 @@ class Server {
     }
 
     public void start() {
-        LOG.info("Map/reduce server started...");
-        executorService.scheduleAtFixedRate(this::watchForJobs, 0, 1, TimeUnit.SECONDS);
+        LOG.info("Starting Map/reduce HTTP server on port {}...", port);
+        app.start(port);
     }
 
     public void shutdown() throws IOException {
+        LOG.info("Shutting down Map/reduce HTTP server...");
+        app.stop();
 
         if (!executorService.isShutdown()) {
             executorService.shutdown();
@@ -87,39 +82,28 @@ class Server {
                 throw new RuntimeException(e);
             }
         }
-
-        watchKey.cancel();
-        watchService.close();
     }
 
-    public Path jobsDir() {
-        return jobsDir;
-    }
+    private void handleJobRequest(Context ctx) {
+        try {
+            var jobDefinition = gson.fromJson(ctx.body(), JobDefinition.class);
+            LOG.info("Received new job request: {}", jobDefinition);
 
-    private void watchForJobs() {
-        LOG.debug("polling watch key {} for filesystem modifications", watchKey.watchable());
-        var watchEvents = watchKey.pollEvents();
-        for (WatchEvent<?> watchEvent : watchEvents) {
-            Path context = (Path) watchEvent.context();
-            LOG.debug("new file {}", context);
-            if (context.getFileName().toString().endsWith(".json")) {
-                try (var reader = Files.newBufferedReader(jobsDir.resolve(context))) {
-                    var jobDefinition = gson.fromJson(reader, JobDefinition.class);
-                    LOG.debug("loaded new job definition {}", jobDefinition);
-                    var job = loadJob(Paths.get(jobDefinition.getCodeUri()), jobDefinition.getContext());
-                    LOG.debug("loaded new job {}", job);
-                    executorService.submit(() -> {
-                        LOG.debug("running job {}", job);
-                        var output = new HashMap<String, Long>();
-                        mapReduce.run(job.input(), job.mapper(), job.reducer(), output::put);
-                    });
-                    Files.deleteIfExists(context);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                } finally {
-
-                }
+            var job = loadJob(Paths.get(jobDefinition.getCodeUri()), jobDefinition.getContext());
+            if (job != null) {
+                executorService.submit(() -> {
+                    LOG.info("Executing job: {}", job);
+                    var output = new HashMap<String, Long>();
+                    mapReduce.run(job.input(), job.mapper(), job.reducer(), output::put);
+                    LOG.info("Job completed with {} results", output.size());
+                });
+                ctx.status(202).result("Job accepted for processing");
+            } else {
+                ctx.status(400).result("Failed to load job");
             }
+        } catch (Exception e) {
+            LOG.error("Error processing job request", e);
+            ctx.status(500).result("Internal server error: " + e.getMessage());
         }
     }
 }
