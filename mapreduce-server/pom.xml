@@ -59,6 +59,13 @@
             <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>pl.symentis.mapreduce</groupId>
+            <artifactId>mapreduce-wordcount</artifactId>
+            <version>${project.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -77,7 +84,28 @@
                         <configuration>
                             <stripVersion>true</stripVersion>
                             <includeArtifactIds>mapreduce-wordcount</includeArtifactIds>
+                            <type>jar</type>
                             <outputDirectory>${project.build.directory}/libs</outputDirectory>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>unzip-mapreduce-test-fixtures</id>
+                        <goals>
+                            <goal>unpack</goal>
+                        </goals>
+                        <phase>process-test-resources</phase>
+                        <configuration>
+                            <artifactItems>
+                                <artifactItem>
+                                    <groupId>pl.symentis.mapreduce</groupId>
+                                    <artifactId>mapreduce-wordcount</artifactId>
+                                    <version>${project.version}</version>
+                                    <classifier>tests</classifier>
+                                    <type>jar</type>
+                                    <includes>big.txt,text8</includes>
+                                    <outputDirectory>${project.build.directory}/libs</outputDirectory>
+                                </artifactItem>
+                            </artifactItems>
                         </configuration>
                     </execution>
                 </executions>
