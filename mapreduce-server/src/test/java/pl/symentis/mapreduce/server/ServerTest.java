@@ -18,11 +18,10 @@ class ServerTest {
 
     @BeforeAll
     static void setUp(@TempDir Path tempDir) throws IOException {
-        server = new ServerCommand.Builder().port(8080).jobsDir(tempDir).build();
-        server.start();
-
-        client = new MapReduceServerClient("http://localhost:8080");
         jobsDir = tempDir;
+        server = new ServerCommand.Builder().port(8080).jobsDir(jobsDir).build();
+        server.start();
+        client = new MapReduceServerClient("http://localhost:8080");
     }
 
     @AfterAll
@@ -36,10 +35,10 @@ class ServerTest {
 
     @Test
     void putJobContextFiles() throws Exception {
-        client.uploadJobFiles(
-                "first",
-                Paths.get("target/libs/mapreduce-wordcount.jar"),
-                Paths.get("target/libs/mapreduce-wordcount.jar"));
-        assertThat(jobsDir.resolve("first/mapreduce-wordcount.jar")).isNotEmptyFile();
+        var jarFile = Paths.get("target/libs/mapreduce-wordcount.jar");
+        var inputFile = Paths.get("target/libs/big.txt");
+        client.uploadJobFiles("first", jarFile, inputFile);
+        assertThat(jobsDir.resolve("first/mapreduce-wordcount.jar")).hasSameBinaryContentAs(jarFile);
+        assertThat(jobsDir.resolve("first/big.txt")).hasSameTextualContentAs(inputFile);
     }
 }
