@@ -7,6 +7,7 @@ import com.google.gson.Gson;
 import io.javalin.Javalin;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.file.Path;
 import java.util.concurrent.Executors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,14 +22,18 @@ public class ServerCommand implements Runnable {
     @Required
     private int port = 8080;
 
-    private Server boot() throws IOException {
-        return new Builder().port(port).build();
-    }
-
     @Override
     public void run() {
         try {
-            boot().start();
+            var server = new Builder().port(port).build();
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                try {
+                    server.stop();
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                }
+            }));
+            server.start();
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -36,16 +41,22 @@ public class ServerCommand implements Runnable {
 
     public static class Builder {
         private int port = 8080;
+        private Path jobsDir;
 
         public Builder port(int port) {
             this.port = port;
             return this;
         }
 
+        public Builder jobsDir(Path jobsDir) {
+            this.jobsDir = jobsDir;
+            return this;
+        }
+
         public Server build() throws IOException {
             LOG.info("initializing HTTP server on port {}", port);
             var javalin = Javalin.create();
-            
+
             LOG.info("initializing map reduce framework");
             var mapReduce = new BatchingMapReduce.Builder()
                     .withBatchSize(1000)
@@ -57,7 +68,7 @@ public class ServerCommand implements Runnable {
                     Executors.newScheduledThreadPool(Runtime.getRuntime().availableProcessors() + 1);
             var gson = new Gson();
 
-            return new Server(javalin, port, executorService, gson, mapReduce);
+            return new Server(javalin, port, executorService, gson, mapReduce, jobsDir);
         }
     }
 }

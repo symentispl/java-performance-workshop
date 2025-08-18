@@ -3,14 +3,10 @@ package pl.symentis.mapreduce.server;
 import com.github.rvesse.airline.annotations.Command;
 import com.github.rvesse.airline.annotations.Option;
 import com.github.rvesse.airline.annotations.restrictions.Required;
-import com.google.gson.Gson;
 import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
+import java.nio.file.Paths;
 import java.util.Map;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,30 +24,21 @@ public class BenchCommand implements Runnable {
 
     @Override
     public void run() {
-        var jobDefinition = new JobDefinition(
-                "../mapreduce-wordcount-bundle/target/mapreduce-wordcount-bundle-0.0.1-SNAPSHOT.jar",
-                Map.of("filename", "../mapreduce-wordcount/src/test/resources/big.txt"));
-        var gson = new Gson();
-        
-        var httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(10))
-                .build();
+        var client = new MapReduceServerClient(serverUrl);
 
         while (true) {
             try {
-                var requestBody = gson.toJson(jobDefinition);
-                var request = HttpRequest.newBuilder()
-                        .uri(URI.create(serverUrl + "/jobs"))
-                        .header("Content-Type", "application/json")
-                        .POST(HttpRequest.BodyPublishers.ofString(requestBody))
-                        .timeout(Duration.ofSeconds(30))
-                        .build();
+                String jobId = UUID.randomUUID().toString();
+                var jarFile =
+                        Paths.get("../mapreduce-wordcount-bundle/target/mapreduce-wordcount-bundle-0.0.1-SNAPSHOT.jar");
+                var dataFile = Paths.get("../mapreduce-wordcount/src/test/resources/big.txt");
+                var jobParameters = Map.of("filename", "big.txt");
 
-                var response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-                LOG.info("Job submitted, response: {} {}", response.statusCode(), response.body());
-                
+                client.submitJob(
+                        jobId, jarFile, dataFile, "mapreduce-wordcount-bundle-0.0.1-SNAPSHOT.jar", jobParameters);
+
                 Thread.sleep(jobIntervalMillis);
-            } catch (IOException | InterruptedException e) {
+            } catch (IOException | InterruptedException | MapReduceServerException e) {
                 LOG.error("failed to submit new job", e);
             }
         }
