@@ -6,7 +6,6 @@ import com.github.rvesse.airline.annotations.restrictions.Required;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.Map;
-import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,14 +27,14 @@ public class BenchCommand implements Runnable {
 
         while (true) {
             try {
-                String jobId = UUID.randomUUID().toString();
                 var jarFile =
                         Paths.get("../mapreduce-wordcount-bundle/target/mapreduce-wordcount-bundle-0.0.1-SNAPSHOT.jar");
                 var dataFile = Paths.get("../mapreduce-wordcount/src/test/resources/big.txt");
                 var jobParameters = Map.of("filename", "big.txt");
 
-                client.submitJob(
-                        jobId, jarFile, dataFile, "mapreduce-wordcount-bundle-0.0.1-SNAPSHOT.jar", jobParameters);
+                var jobId = client.submitJob(
+                        jarFile, dataFile, jarFile.getFileName().toString(), jobParameters);
+                LOG.info("Submitted job with ID: {}", jobId);
 
                 Thread.sleep(jobIntervalMillis);
             } catch (IOException | InterruptedException | MapReduceServerException e) {

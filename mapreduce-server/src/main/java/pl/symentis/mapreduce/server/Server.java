@@ -3,8 +3,10 @@ package pl.symentis.mapreduce.server;
 import com.google.gson.Gson;
 import io.javalin.Javalin;
 import io.javalin.http.Context;
+import io.javalin.json.JsonMapper;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
@@ -13,10 +15,13 @@ import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.ServiceLoader;
+import java.util.UUID;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import pl.symentis.mapreduce.batching.BatchingMapReduce;
 import pl.symentis.mapreduce.core.Job;
 import pl.symentis.mapreduce.core.JobFactory;
 import pl.symentis.mapreduce.core.MapReduce;
@@ -24,69 +29,51 @@ import pl.symentis.mapreduce.core.MapReduce;
 class Server {
 
     private static final Logger LOG = LoggerFactory.getLogger(Server.class);
-    private final Javalin app;
-    private final int port;
-    private final ScheduledExecutorService executorService;
-    private final Gson gson;
-    private final MapReduce mapReduce;
-    private final Path jobsDir;
 
-    public Server(
-            Javalin app,
-            int port,
-            ScheduledExecutorService executorService,
-            Gson gson,
-            MapReduce mapReduce,
-            Path jobsDir) {
+    static Server create(int port, MapReduce mapReduce, Path jobsDir) {
+        LOG.info("initializing HTTP server on port {}", port);
+        var gson = new Gson();
+        var javalin = Javalin.create(config -> config.jsonMapper(new GsonMapper(gson)));
 
-        this.app = app;
-        this.port = port;
-        this.executorService = executorService;
-        this.gson = gson;
-        this.mapReduce = mapReduce;
-        this.jobsDir = jobsDir;
+        var executorService =
+                Executors.newScheduledThreadPool(Runtime.getRuntime().availableProcessors() + 1);
 
         try {
             Files.createDirectories(jobsDir);
         } catch (IOException e) {
-            throw new RuntimeException("Failed to create jobs storage directory", e);
+            throw new UncheckedIOException(
+                    "Failed to create jobs storage directory %s".formatted(jobsDir.toAbsolutePath()), e);
         }
 
-        this.app.put("/jobs/{job-id}", this::handleJobFileUpload);
-        this.app.post("/jobs/{job-id}", this::handleJobExecution);
+        return new Server(javalin, port, executorService, mapReduce, jobsDir);
     }
 
-    private static Job loadJob(Path codeUri, Map<String, String> context) {
-        try {
-            var absolutePath = codeUri.toAbsolutePath();
-            if (!Files.isRegularFile(absolutePath)) {
-                throw new FileNotFoundException("file doesn't exist: " + absolutePath);
-            }
-            var url = absolutePath.toUri().toURL();
-            LOG.debug("loading job from code url {}", url);
-            var jobClassLoader = URLClassLoader.newInstance(new URL[] {url});
-            var jobServiceLoader = ServiceLoader.load(JobFactory.class, jobClassLoader);
-            var first = jobServiceLoader.findFirst();
-            if (first.isPresent()) {
-                var job = first.get();
-                LOG.debug("loaded job code", job);
-                return job.create(context);
-            } else {
-                LOG.warn("job service not found");
-            }
-        } catch (Throwable e) {
-            LOG.error("job failed", e);
-        }
-        return null;
+    private final Javalin app;
+    private final int port;
+    private final ScheduledExecutorService executorService;
+    private final MapReduce mapReduce;
+    private final Path jobsDir;
+
+    public Server(Javalin app, int port, ScheduledExecutorService executorService, MapReduce mapReduce, Path jobsDir) {
+        this.app = app;
+        this.port = port;
+        this.executorService = executorService;
+        this.mapReduce = mapReduce;
+        this.jobsDir = jobsDir;
     }
 
     public void start() {
-        LOG.info("Starting Map/reduce HTTP server on port {}...", port);
+        LOG.info("starting Map/Reduce HTTP server on port {}", port);
+
+        this.app.put("/jobs/", this::createJob);
+        this.app.post("/jobs/{job-id}", this::submitJob);
+        this.app.get("/jobs/{job-id}", this::jobStatus);
+
         app.start(port);
     }
 
     public void stop() throws IOException {
-        LOG.info("Shutting down Map/reduce HTTP server...");
+        LOG.info("shutting down Map/reduce HTTP server");
         app.stop();
 
         if (!executorService.isShutdown()) {
@@ -99,17 +86,12 @@ class Server {
         }
     }
 
-    private void handleJobFileUpload(Context ctx) {
+    private void createJob(Context ctx) {
         try {
-            var jobId = ctx.pathParam("job-id");
-            LOG.debug("received files upload for job: {}", jobId);
+            var jobId = UUID.randomUUID().toString();
+            LOG.debug("creating new job with id {}", jobId);
 
             var jobDir = jobsDir.resolve(jobId);
-            if (Files.isDirectory(jobDir)) {
-                ctx.status(400).result("Job already exists");
-                return;
-            }
-
             Files.createDirectories(jobDir);
 
             for (var uploadedFile : ctx.uploadedFiles()) {
@@ -118,33 +100,35 @@ class Server {
 
                 try (var inputStream = uploadedFile.content()) {
                     Files.copy(inputStream, targetFile, StandardCopyOption.REPLACE_EXISTING);
-                    LOG.debug("uploaded file: {} for job: {}", filename, jobId);
+                    LOG.debug("uploaded file {} for job {}", filename, jobId);
                 }
             }
-            ctx.status(200).result("Files uploaded successfully for job: " + jobId);
+
+            var jobUrlPath = "/jobs/%s".formatted(jobId);
+            ctx.status(201).header("Location", jobUrlPath).json(new NewJobResponse(jobId, jobUrlPath));
         } catch (Exception e) {
-            LOG.error("Error processing job file upload", e);
-            ctx.status(500).result("Internal server error: " + e.getMessage());
+            LOG.error("error processing job file upload", e);
+            ctx.status(500).json(new ErrorResponse("Internal server error: " + e.getMessage()));
         }
     }
 
-    private void handleJobExecution(Context ctx) {
+    private void submitJob(Context ctx) {
         try {
-            String jobId = ctx.pathParam("job-id");
-            var jobDefinition = gson.fromJson(ctx.body(), JobDefinition.class);
-            LOG.info("Received job execution request for job: {} with definition: {}", jobId, jobDefinition);
+            var jobId = ctx.pathParam("job-id");
+            var jobDefinition = ctx.bodyAsClass(SubmitJobRequest.class);
+            LOG.info("received job execution request for job {} with parameters {} ", jobId, jobDefinition);
 
-            Path jobDir = jobsDir.resolve(jobId);
+            var jobDir = jobsDir.resolve(jobId);
             if (!Files.exists(jobDir)) {
-                ctx.status(404).result("Job directory not found: " + jobId);
+                ctx.status(404).json(new ErrorResponse("Job %s not found".formatted(jobId)));
                 return;
             }
 
-            Map<String, String> context = new HashMap<>(jobDefinition.getContext());
+            var context = new HashMap<>(jobDefinition.context());
 
-            Path codeJar = null;
-            if (jobDefinition.getCodeUri() != null) {
-                codeJar = jobDir.resolve(jobDefinition.getCodeUri());
+            Path codeJar;
+            if (jobDefinition.codeUri() != null) {
+                codeJar = jobDir.resolve(jobDefinition.codeUri());
             } else {
                 try (var files = Files.list(jobDir)) {
                     codeJar = files.filter(f -> f.toString().endsWith(".jar"))
@@ -154,7 +138,8 @@ class Server {
             }
 
             if (codeJar == null || !Files.exists(codeJar)) {
-                ctx.status(400).result("No JAR file found for job: " + jobId);
+                ctx.status(400)
+                        .json(new ErrorResponse("No code jar file %s found for job %s ".formatted(codeJar, jobId)));
                 return;
             }
 
@@ -171,18 +156,92 @@ class Server {
             var job = loadJob(codeJar, context);
             if (job != null) {
                 executorService.submit(() -> {
-                    LOG.info("Executing job: {}", job);
+                    LOG.debug("submitting job {}", job);
                     var output = new HashMap<String, Long>();
                     mapReduce.run(job.input(), job.mapper(), job.reducer(), output::put);
-                    LOG.info("Job completed with {} results", output.size());
+                    LOG.debug("job completed with {} results", output.size());
                 });
-                ctx.status(202).result("Job accepted for processing");
+                ctx.status(202).json(new SubmitJobResponse("Job accepted for processing"));
             } else {
-                ctx.status(400).result("Failed to load job");
+                ctx.status(400).json(new ErrorResponse("Failed to load job %s from %s".formatted(jobId, codeJar)));
             }
         } catch (Exception e) {
             LOG.error("Error processing job execution request", e);
-            ctx.status(500).result("Internal server error: " + e.getMessage());
+            ctx.status(500).json(new ErrorResponse("Internal server error: %s".formatted(e.getMessage())));
+        }
+    }
+
+    private void jobStatus(Context ctx) {}
+
+    private static Job loadJob(Path codeUri, Map<String, String> context) {
+        try {
+            var absolutePath = codeUri.toAbsolutePath();
+            if (!Files.isRegularFile(absolutePath)) {
+                throw new FileNotFoundException("File %s doesn't exist".formatted(absolutePath));
+            }
+            var url = absolutePath.toUri().toURL();
+            LOG.debug("loading job from code url {}", url);
+            var jobClassLoader = URLClassLoader.newInstance(new URL[] {url});
+            var jobServiceLoader = ServiceLoader.load(JobFactory.class, jobClassLoader);
+            var first = jobServiceLoader.findFirst();
+            if (first.isPresent()) {
+                var job = first.get();
+                LOG.debug("loaded job code {}", job);
+                return job.create(context);
+            } else {
+                LOG.warn("job service not found");
+            }
+        } catch (Throwable e) {
+            LOG.error("job failed", e);
+        }
+        return null;
+    }
+
+    private static class GsonMapper implements JsonMapper {
+        private final Gson gson;
+
+        public GsonMapper(Gson gson) {
+            this.gson = gson;
+        }
+
+        @Override
+        public String toJsonString(Object obj, java.lang.reflect.Type type) {
+            return gson.toJson(obj, type);
+        }
+
+        @Override
+        public <T> T fromJsonString(String json, java.lang.reflect.Type targetType) {
+            return gson.fromJson(json, targetType);
+        }
+    }
+
+    static class Builder {
+
+        private static final Logger LOG = LoggerFactory.getLogger(Builder.class);
+
+        private int port = 8080;
+        private Path jobsDir;
+
+        Builder port(int port) {
+            this.port = port;
+            return this;
+        }
+
+        Builder jobsDir(Path jobsDir) {
+            this.jobsDir = jobsDir;
+            return this;
+        }
+
+        Server build() throws IOException {
+
+            LOG.info("initializing map reduce framework");
+            var mapReduce = new BatchingMapReduce.Builder()
+                    .withBatchSize(1000)
+                    .withPhaserMaxTasks(10000)
+                    .withThreadPoolSize(Runtime.getRuntime().availableProcessors())
+                    .build();
+
+            return create(port, mapReduce, jobsDir);
         }
     }
 }
