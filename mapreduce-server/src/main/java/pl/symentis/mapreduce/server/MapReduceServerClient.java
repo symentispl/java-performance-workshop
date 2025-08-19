@@ -54,7 +54,7 @@ public class MapReduceServerClient implements AutoCloseable {
     }
 
     public String executeJob(String jobId, String jarFileName, Map<String, String> jobParameters)
-            throws IOException, InterruptedException {
+            throws IOException, InterruptedException, MapReduceServerException {
         var jobDefinition = new SubmitJobRequest(jarFileName, jobParameters);
 
         var requestBody = gson.toJson(jobDefinition);
@@ -67,8 +67,15 @@ public class MapReduceServerClient implements AutoCloseable {
 
         var response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         LOG.info("job {} executed, response: {} {}", jobId, response.statusCode(), response.body());
-        var responseJson = gson.fromJson(response.body(), Map.class);
-        return (String) responseJson.get("message");
+
+        if (response.statusCode() == 200 || response.statusCode() == 202) {
+            var responseJson = gson.fromJson(response.body(), Map.class);
+            return (String) responseJson.get("message");
+        } else {
+            var errorJson = gson.fromJson(response.body(), Map.class);
+            String errorMessage = (String) errorJson.get("message");
+            throw new MapReduceServerException(errorMessage != null ? errorMessage : response.body());
+        }
     }
 
     public String submitJob(Path jarFile, Path dataFile, String jarFileName, Map<String, String> jobParameters)
@@ -76,6 +83,42 @@ public class MapReduceServerClient implements AutoCloseable {
         var jobId = uploadJobFiles(jarFile, dataFile);
         executeJob(jobId, jarFileName, jobParameters);
         return jobId;
+    }
+
+    public JobResults getJobResults(String jobId) throws IOException, InterruptedException, MapReduceServerException {
+        var request = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/jobs/" + jobId))
+                .GET()
+                .timeout(Duration.ofSeconds(30))
+                .build();
+
+        var response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() == 200) {
+            return gson.fromJson(response.body(), JobResults.class);
+        } else if (response.statusCode() == 404) {
+            return null;
+        } else {
+            throw new MapReduceServerException("Failed to get job results: " + response.body());
+        }
+    }
+
+    public JobResults deleteJob(String jobId) throws IOException, InterruptedException, MapReduceServerException {
+        var request = HttpRequest.newBuilder()
+                .uri(URI.create(serverUrl + "/jobs/" + jobId))
+                .DELETE()
+                .timeout(Duration.ofSeconds(30))
+                .build();
+
+        var response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() == 200) {
+            return gson.fromJson(response.body(), JobResults.class);
+        } else if (response.statusCode() == 404) {
+            throw new MapReduceServerException("Job not found: " + jobId);
+        } else {
+            throw new MapReduceServerException("Failed to delete job: " + response.body());
+        }
     }
 
     @Override

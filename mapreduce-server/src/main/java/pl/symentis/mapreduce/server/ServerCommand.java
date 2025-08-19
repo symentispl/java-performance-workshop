@@ -19,13 +19,16 @@ public class ServerCommand implements Runnable {
     private static final Logger LOG = LoggerFactory.getLogger(ServerCommand.class);
 
     @Option(name = "--port")
-    @Required
     private int port = 8080;
+
+    @Option(name = "--jobs-dir")
+    @Required
+    private Path jobsDir;
 
     @Override
     public void run() {
         try {
-            var server = new Builder().port(port).build();
+            var server = new Builder().port(port).jobsDir(jobsDir).build();
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 try {
                     server.stop();

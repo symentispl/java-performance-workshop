@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.ServiceLoader;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -53,6 +54,7 @@ class Server {
     private final ScheduledExecutorService executorService;
     private final MapReduce mapReduce;
     private final Path jobsDir;
+    private final ConcurrentHashMap<String, JobResults> jobResults = new ConcurrentHashMap<>();
 
     public Server(Javalin app, int port, ScheduledExecutorService executorService, MapReduce mapReduce, Path jobsDir) {
         this.app = app;
@@ -68,6 +70,7 @@ class Server {
         this.app.put("/jobs/", this::createJob);
         this.app.post("/jobs/{job-id}", this::submitJob);
         this.app.get("/jobs/{job-id}", this::jobStatus);
+        this.app.delete("/jobs/{job-id}", this::deleteJob);
 
         app.start(port);
     }
@@ -155,11 +158,20 @@ class Server {
 
             var job = loadJob(codeJar, context);
             if (job != null) {
+                // Store initial status
+                jobResults.put(jobId, new JobResults(JobStatus.RUNNING, Map.of()));
+
                 executorService.submit(() -> {
                     LOG.debug("submitting job {}", job);
                     var output = new HashMap<String, Long>();
-                    mapReduce.run(job.input(), job.mapper(), job.reducer(), output::put);
-                    LOG.debug("job completed with {} results", output.size());
+                    try {
+                        mapReduce.run(job.input(), job.mapper(), job.reducer(), output::put);
+                        LOG.debug("job completed with {} results", output.size());
+                        jobResults.put(jobId, new JobResults(JobStatus.COMPLETED, output));
+                    } catch (Exception e) {
+                        LOG.error("job failed", e);
+                        jobResults.put(jobId, new JobResults(JobStatus.FAILED, Map.of()));
+                    }
                 });
                 ctx.status(202).json(new SubmitJobResponse("Job accepted for processing"));
             } else {
@@ -171,7 +183,46 @@ class Server {
         }
     }
 
-    private void jobStatus(Context ctx) {}
+    private void jobStatus(Context ctx) {
+        var jobId = ctx.pathParam("job-id");
+        var results = jobResults.get(jobId);
+
+        if (results != null) {
+            ctx.json(results);
+        } else {
+            ctx.status(404).json(new ErrorResponse("Job %s not found".formatted(jobId)));
+        }
+    }
+
+    private void deleteJob(Context ctx) {
+        var jobId = ctx.pathParam("job-id");
+        var results = jobResults.remove(jobId);
+
+        if (results != null) {
+            // Clean up job files from disk
+            var jobDir = jobsDir.resolve(jobId);
+            try {
+                if (Files.exists(jobDir)) {
+                    Files.walk(jobDir)
+                            .sorted((a, b) -> b.compareTo(a)) // Delete files before directories
+                            .forEach(path -> {
+                                try {
+                                    Files.deleteIfExists(path);
+                                } catch (IOException e) {
+                                    LOG.warn("Failed to delete {}", path, e);
+                                }
+                            });
+                }
+                LOG.debug("Cleaned up job {} files and results", jobId);
+            } catch (IOException e) {
+                LOG.error("Error cleaning up job {} files", jobId, e);
+            }
+
+            ctx.json(results);
+        } else {
+            ctx.status(404).json(new ErrorResponse("Job %s not found".formatted(jobId)));
+        }
+    }
 
     private static Job loadJob(Path codeUri, Map<String, String> context) {
         try {
