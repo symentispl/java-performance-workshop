@@ -29,7 +29,7 @@ public class MapReduceServerClient implements AutoCloseable {
         this.gson = new Gson();
     }
 
-    public boolean uploadJobFiles(String jobId, Path jarFile, Path dataFile)
+    public String uploadJobFiles(Path jarFile, Path dataFile)
             throws IOException, InterruptedException, MapReduceServerException {
         var multipartBody = MultipartBodyPublisher.newBuilder()
                 .filePart(jarFile.getFileName().toString(), jarFile, MediaType.of("application", "java-archive"))
@@ -37,23 +37,25 @@ public class MapReduceServerClient implements AutoCloseable {
                 .build();
 
         var request = HttpRequest.newBuilder()
-                .uri(URI.create(serverUrl + "/jobs/" + jobId))
+                .uri(URI.create(serverUrl + "/jobs/"))
                 .PUT(multipartBody)
                 .timeout(Duration.ofSeconds(30))
                 .build();
 
         var response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        LOG.debug("files uploaded for job {}, response: {} {}", jobId, response.statusCode(), response.body());
+        LOG.debug("files uploaded, response: {} {}", response.statusCode(), response.body());
 
-        if (response.statusCode() != 200) {
+        if (response.statusCode() != 201) {
             throw new MapReduceServerException(response.body());
         }
-        return true;
+
+        var responseJson = gson.fromJson(response.body(), Map.class);
+        return (String) responseJson.get("jobId");
     }
 
-    public void executeJob(String jobId, String jarFileName, Map<String, String> jobParameters)
+    public String executeJob(String jobId, String jarFileName, Map<String, String> jobParameters)
             throws IOException, InterruptedException {
-        var jobDefinition = new JobDefinition(jarFileName, jobParameters);
+        var jobDefinition = new SubmitJobRequest(jarFileName, jobParameters);
 
         var requestBody = gson.toJson(jobDefinition);
         var request = HttpRequest.newBuilder()
@@ -64,17 +66,16 @@ public class MapReduceServerClient implements AutoCloseable {
                 .build();
 
         var response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        LOG.info("Job {} executed, response: {} {}", jobId, response.statusCode(), response.body());
+        LOG.info("job {} executed, response: {} {}", jobId, response.statusCode(), response.body());
+        var responseJson = gson.fromJson(response.body(), Map.class);
+        return (String) responseJson.get("message");
     }
 
-    public boolean submitJob(
-            String jobId, Path jarFile, Path dataFile, String jarFileName, Map<String, String> jobParameters)
+    public String submitJob(Path jarFile, Path dataFile, String jarFileName, Map<String, String> jobParameters)
             throws IOException, InterruptedException, MapReduceServerException {
-        if (uploadJobFiles(jobId, jarFile, dataFile)) {
-            executeJob(jobId, jarFileName, jobParameters);
-            return true;
-        }
-        return false;
+        var jobId = uploadJobFiles(jarFile, dataFile);
+        executeJob(jobId, jarFileName, jobParameters);
+        return jobId;
     }
 
     @Override
