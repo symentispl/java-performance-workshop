@@ -1,7 +1,6 @@
 package pl.symentis.wordcount.batching;
 
 import java.util.HashMap;
-
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Param;

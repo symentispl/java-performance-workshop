@@ -55,7 +55,7 @@ tasks:
       - "**/target/classes/**"
       - "**/target/test-classes/**"
   run-benchmarks:
-    desc: "Run benchmarks"
+    desc: "Run benchmarks (use '-- [benchmark name]' to run selected benchmarks)"
     deps:
       - build
     cmds:
@@ -108,7 +108,7 @@ tasks:
       - parallel-scaling-benchmarks
       - batching-scaling-benchmarks
   profile-benchmarks:
-    desc: "Profile benchmarks using async-profiler"
+    desc: "Profile benchmarks using async-profiler (of JFR under Windows) (use '-- [benchmark name]' to run selected benchmarks)"
     deps:
       - download-async-profiler
       - build
