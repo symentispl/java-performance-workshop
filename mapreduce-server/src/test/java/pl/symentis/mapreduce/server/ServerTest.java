@@ -1,10 +1,13 @@
 package pl.symentis.mapreduce.server;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.awaitility.Awaitility.await;
 
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.Map;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -35,7 +38,7 @@ class ServerTest {
     }
 
     @Test
-    void putJobContextFiles() throws Exception {
+    void putJobContextFilesAndExecute() throws Exception {
         var jarFile = Paths.get("target/libs/mapreduce-wordcount.jar");
         var inputFile = Paths.get("target/libs/big.txt");
         var jobId = client.uploadJobFiles(jarFile, inputFile);
@@ -47,11 +50,38 @@ class ServerTest {
 
     @Test
     void submitJobWithInvalidJobId() throws Exception {
-        try {
-            client.executeJob("non-existent-job-id", "test.jar", Map.of("filename", "test.txt"));
-        } catch (Exception e) {
-            // Expected - this should fail with a JSON error response
-            assertThat(e.getMessage()).contains("Job directory not found");
-        }
+        assertThatThrownBy(() -> client.executeJob("invalid-job-id", "test.jar", Map.of("filename", "test.txt")))
+                .hasMessageContaining("Job invalid-job-id not found");
+    }
+
+    @Test
+    void submitJobGetResultsAndDelete() throws Exception {
+        var jarFile = Paths.get("target/libs/mapreduce-wordcount.jar");
+        var inputFile = Paths.get("target/libs/big.txt");
+        var jobId =
+                client.submitJob(jarFile, inputFile, jarFile.getFileName().toString(), Map.of("filename", "big.txt"));
+
+        await().atMost(Duration.ofSeconds(10))
+                .pollInterval(Duration.ofMillis(500))
+                .until(() -> {
+                    var results = client.getJobResults(jobId);
+                    return results != null && results.status() == JobStatus.COMPLETED;
+                });
+
+        var results = client.getJobResults(jobId);
+        assertThat(results).isNotNull();
+        assertThat(results.status()).isEqualTo(JobStatus.COMPLETED);
+        assertThat(results.results()).isNotEmpty();
+
+        assertThat(jobsDir.resolve(jobId)).exists();
+
+        var deletedResults = client.deleteJob(jobId);
+        assertThat(deletedResults).isNotNull();
+        assertThat(deletedResults.status()).isEqualTo(JobStatus.COMPLETED);
+
+        assertThat(jobsDir.resolve(jobId)).doesNotExist();
+
+        var nullResults = client.getJobResults(jobId);
+        assertThat(nullResults).isNull();
     }
 }
