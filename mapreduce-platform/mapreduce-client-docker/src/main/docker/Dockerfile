@@ -10,4 +10,4 @@ COPY /maven/resources/big.txt /resources/big.txt
 COPY /maven/config/defaults.cfg /etc/defaults.cfg
 RUN mkdir /jobs
 
-ENTRYPOINT ["java","-javaagent:/app/pyroscope.jar","-jar", "/app/mapreduce-server.jar","bench","--jobs-dir","/jobs","--filename","/resources/big.txt","--code-uri", "/app/mapreduce-wordcount-bundle.jar","--config","/etc/defaults.cfg","--job-interval-ms","500"]
+ENTRYPOINT ["java","-javaagent:/app/pyroscope.jar","-jar", "/app/mapreduce-server.jar","bench","--server-url", "http://mapreduce-server:8080", "--job-interval-ms", "1000"]

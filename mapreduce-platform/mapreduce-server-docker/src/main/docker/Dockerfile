@@ -9,4 +9,4 @@ COPY /maven/libs/mapreduce-wordcount-bundle.jar /app/mapreduce-wordcount-bundle.
 COPY /maven/config/defaults.cfg /etc/defaults.cfg
 RUN mkdir /jobs
 
-ENTRYPOINT ["java","-javaagent:/app/pyroscope.jar","-jar", "/app/mapreduce-server.jar","bootstrap","--jobs-dir","/jobs","--config","/etc/defaults.cfg"]
+ENTRYPOINT ["java","-javaagent:/app/pyroscope.jar","-jar", "/app/mapreduce-server.jar","bootstrap","--jobs-dir","/jobs"]

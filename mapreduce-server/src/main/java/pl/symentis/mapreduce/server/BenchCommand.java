@@ -88,8 +88,8 @@ public class BenchCommand implements Runnable {
     }
 
     private void processJob(MapReduceServerClient client) throws Exception {
-        var jarFile = Paths.get("../mapreduce-wordcount-bundle/target/mapreduce-wordcount-bundle-0.0.1-SNAPSHOT.jar");
-        var dataFile = Paths.get("../mapreduce-wordcount/src/test/resources/big.txt");
+        var jarFile = Paths.get("/app/mapreduce-wordcount-bundle.jar");
+        var dataFile = Paths.get("/resources/big.txt");
         var jobParameters = Map.of("filename", "big.txt");
 
         long startTime = System.currentTimeMillis();

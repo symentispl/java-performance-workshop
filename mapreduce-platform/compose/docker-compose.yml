@@ -1,38 +1,38 @@
 version: '3.8'
 services:
-  telegraf:
-    image: telegraf
-    container_name: telegraf
-    restart: always
-    environment:
-      - DOCKER_INFLUXDB_INIT_ORG=symentis
-      - DOCKER_INFLUXDB_INIT_BUCKET=demo
-      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=admin
-    volumes:
-    - ./telegraf.conf:/etc/telegraf/telegraf.conf:ro
-    depends_on:
-      - influxdb
-    links:
-      - influxdb
-    ports:
-    - '8125:8125'
-
-  influxdb:
-    image: influxdb:2.7
-    container_name: influxdb
-    restart: always
-    environment:
-      - DOCKER_INFLUXDB_INIT_MODE=setup 
-      - DOCKER_INFLUXDB_INIT_USERNAME=admin
-      - DOCKER_INFLUXDB_INIT_PASSWORD=influxadmin
-      - DOCKER_INFLUXDB_INIT_ORG=symentis
-      - DOCKER_INFLUXDB_INIT_BUCKET=mapreduce
-      - DOCKER_INFLUXDB_INIT_RETENTION=1d
-      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=admin
-    ports:
-      - '8086:8086'
-    volumes:
-      - influxdb_data:/var/lib/
+#  telegraf:
+#    image: telegraf
+#    container_name: telegraf
+#    restart: always
+#    environment:
+#      - DOCKER_INFLUXDB_INIT_ORG=symentis
+#      - DOCKER_INFLUXDB_INIT_BUCKET=demo
+#      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=admin
+#    volumes:
+#    - ./telegraf.conf:/etc/telegraf/telegraf.conf:ro
+#    depends_on:
+#      - influxdb
+#    links:
+#      - influxdb
+#    ports:
+#    - '8125:8125'
+#
+#  influxdb:
+#    image: influxdb:2.7
+#    container_name: influxdb
+#    restart: always
+#    environment:
+#      - DOCKER_INFLUXDB_INIT_MODE=setup
+#      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+#      - DOCKER_INFLUXDB_INIT_PASSWORD=influxadmin
+#      - DOCKER_INFLUXDB_INIT_ORG=symentis
+#      - DOCKER_INFLUXDB_INIT_BUCKET=mapreduce
+#      - DOCKER_INFLUXDB_INIT_RETENTION=1d
+#      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=admin
+#    ports:
+#      - '8086:8086'
+#    volumes:
+#      - influxdb_data:/var/lib/
 
   pyroscope:
     image: grafana/pyroscope:latest
@@ -51,7 +51,7 @@ services:
       - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
     depends_on:
       - pyroscope
-      - influxdb
+#      - influxdb
 
   apm-platform-demo-client:
     image: mapreduce-client:0.0.1-SNAPSHOT
@@ -63,7 +63,7 @@ services:
       - PYROSCOPE_SERVER_ADDRESS=http://pyroscope:4040
     depends_on:
       - pyroscope
-      - influxdb
+#      - influxdb
 
 volumes:
   influxdb_data: {}
