@@ -6,6 +6,7 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -18,6 +19,7 @@ public class ShardedOffHeapMultiMap<K, V> implements AutoCloseable {
     private final OffHeapShard<K, V>[] shards;
     private final int shardCount;
     private final Function<K, Integer> hashFunction;
+    private final Path baseDirectory;
 
     public ShardedOffHeapMultiMap(
             Path baseDirectory, SerializationStrategy<K> keySerializer, SerializationStrategy<V> valueSerializer)
@@ -37,7 +39,7 @@ public class ShardedOffHeapMultiMap<K, V> implements AutoCloseable {
         this.hashFunction = key -> Math.abs(key.hashCode()) % shardCount;
         this.shards = new OffHeapShard[shardCount];
 
-        Files.createDirectories(baseDirectory);
+        this.baseDirectory = Files.createDirectories(baseDirectory);
 
         for (int i = 0; i < shardCount; i++) {
             Path dataPath = baseDirectory.resolve("shard_" + i + ".dat");
@@ -52,7 +54,7 @@ public class ShardedOffHeapMultiMap<K, V> implements AutoCloseable {
         shards[shardIndex].append(key, value);
     }
 
-    public boolean containsKey(K key) throws IOException, ClassNotFoundException {
+    public boolean containsKey(K key) throws IOException {
         int shardIndex = hashFunction.apply(key);
         return shards[shardIndex].containsKey(key);
     }
@@ -62,7 +64,7 @@ public class ShardedOffHeapMultiMap<K, V> implements AutoCloseable {
         return shards[shardIndex].getValues(key);
     }
 
-    public Iterator<K> getAllKeys() throws IOException, ClassNotFoundException {
+    public Iterator<K> getAllKeys() {
         return new AllKeysIterator();
     }
 
@@ -82,6 +84,7 @@ public class ShardedOffHeapMultiMap<K, V> implements AutoCloseable {
 
     @Override
     public void close() throws IOException {
+        force();
         IOException firstException = null;
         for (OffHeapShard<K, V> shard : shards) {
             try {
@@ -97,11 +100,28 @@ public class ShardedOffHeapMultiMap<K, V> implements AutoCloseable {
         }
     }
 
+    public void cleanup() {
+        try {
+            close();
+            try (var paths = Files.walk(baseDirectory)) {
+                paths.sorted(Comparator.reverseOrder()).forEach(path -> {
+                    try {
+                        Files.delete(path);
+                    } catch (IOException e) {
+                        // Ignore cleanup errors
+                    }
+                });
+            }
+        } catch (IOException e) {
+            // Ignore cleanup errors
+        }
+    }
+
     private class AllKeysIterator implements Iterator<K> {
         private int currentShardIndex = 0;
         private Iterator<K> currentShardIterator;
 
-        public AllKeysIterator() throws ClassNotFoundException {
+        public AllKeysIterator() {
             moveToNextNonEmptyShard();
         }
 
