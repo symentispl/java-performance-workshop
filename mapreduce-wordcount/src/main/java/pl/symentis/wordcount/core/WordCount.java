@@ -32,8 +32,7 @@ public class WordCount {
                 Stopwords stopwords = (Stopwords) stopwordsClass
                         .getMethod("from", InputStream.class)
                         .invoke(stopwordsClass, WordCount.class.getResourceAsStream("stopwords_en.txt"));
-                StringSplitter splitter =
-                        splitterClass.getDeclaredConstructor().newInstance();
+                StringSplitter splitter = splitterClass.getDeclaredConstructor().newInstance();
                 return new WordCount(stopwords, splitter);
             } catch (IllegalAccessException
                     | IllegalArgumentException
