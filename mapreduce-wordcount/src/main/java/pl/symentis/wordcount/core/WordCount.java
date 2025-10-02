@@ -2,9 +2,18 @@ package pl.symentis.wordcount.core;
 
 import static java.lang.String.format;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOError;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.lang.reflect.InvocationTargetException;
 import java.util.NoSuchElementException;
+import java.util.Objects;
+import pl.symentis.mapreduce.core.Bootstrap;
 import pl.symentis.mapreduce.core.Input;
 import pl.symentis.mapreduce.core.Mapper;
 import pl.symentis.mapreduce.core.Output;
@@ -14,11 +23,23 @@ public class WordCount {
 
     public static class Builder {
 
+        private final Bootstrap bootstrap;
         private Class<? extends Stopwords> stopwordsClass = NonThreadLocalStopwords.class;
         private Class<? extends StringSplitter> splitterClass = PatternStringSplitter.class;
 
+        public Builder(Bootstrap bootstrap) {
+            this.bootstrap = Objects.requireNonNull(bootstrap);
+        }
+
         public Builder withStopwords(Class<? extends Stopwords> stopwordsClass) {
             this.stopwordsClass = stopwordsClass;
+            return this;
+        }
+
+        @SuppressWarnings("unchecked")
+        public Builder withStopwords(String shortClassName) {
+            this.stopwordsClass =
+                    (Class<? extends Stopwords>) bootstrap.findClassByShortName(shortClassName, Stopwords.class);
             return this;
         }
 
@@ -27,13 +48,19 @@ public class WordCount {
             return this;
         }
 
+        @SuppressWarnings("unchecked")
+        public Builder withStringSplitter(String shortClassName) {
+            this.splitterClass = (Class<? extends StringSplitter>)
+                    bootstrap.findClassByShortName(shortClassName, StringSplitter.class);
+            return this;
+        }
+
         public WordCount build() {
             try {
                 Stopwords stopwords = (Stopwords) stopwordsClass
                         .getMethod("from", InputStream.class)
                         .invoke(stopwordsClass, WordCount.class.getResourceAsStream("stopwords_en.txt"));
-                StringSplitter splitter =
-                        splitterClass.getDeclaredConstructor().newInstance();
+                StringSplitter splitter = splitterClass.getDeclaredConstructor().newInstance();
                 return new WordCount(stopwords, splitter);
             } catch (IllegalAccessException
                     | IllegalArgumentException
