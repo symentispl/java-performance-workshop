@@ -2,11 +2,11 @@ package pl.symentis.wordcount.core;
 
 import pl.symentis.mapreduce.core.Bootstrap;
 import pl.symentis.mapreduce.core.MapReduce;
-import pl.symentis.mapreduce.core.SequentialMapReduce;
+import pl.symentis.mapreduce.parallel.ParallelMapReduce;
 
-public class SequentialWordCountMapReduceTest implements WordCountMapReduceTest {
+public class ParallelWordCountMapReduceTest implements WordCountMapReduceTest {
     @Override
     public MapReduce mapReduce(Bootstrap bootstrap) {
-        return new SequentialMapReduce.Builder(bootstrap).build();
+        return new ParallelMapReduce.Builder().build();
     }
 }
