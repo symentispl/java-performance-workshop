@@ -6,6 +6,7 @@ import pl.symentis.mapreduce.core.MapReduce;
 import pl.symentis.mapreduce.core.MapperOutput;
 import pl.symentis.mapreduce.core.SequentialMapReduce;
 import pl.symentis.wordcount.core.Stopwords;
+import pl.symentis.wordcount.core.StringSplitter;
 import pl.symentis.wordcount.core.WordCount;
 
 @State(Scope.Benchmark)
@@ -14,8 +15,11 @@ public class SequentialMapReduceWordCountBenchmark {
     @Param({"pl.symentis.mapreduce.core.HashMapOutput"})
     public String mapperOutputClass;
 
-    @Param({"pl.symentis.wordcount.core.NonThreadLocalStopwords"})
+    @Param({"pl.symentis.wordcount.core.NonCollatorStopwords"})
     public String stopwordsClass;
+
+    @Param({"pl.symentis.wordcount.core.StringTokenizerSplitter"})
+    public String stringSplitterClass;
 
     private WordCount wordCount;
     private MapReduce mapReduce;
@@ -25,6 +29,7 @@ public class SequentialMapReduceWordCountBenchmark {
     public void setUp() throws Exception {
         wordCount = new WordCount.Builder()
                 .withStopwords((Class<? extends Stopwords>) Class.forName(stopwordsClass))
+                .withStringSplitter((Class<? extends StringSplitter>) Class.forName(stringSplitterClass))
                 .build();
         mapReduce = new SequentialMapReduce.Builder()
                 .withMapperOutput((Class<? extends MapperOutput<?, ?>>) Class.forName(mapperOutputClass))

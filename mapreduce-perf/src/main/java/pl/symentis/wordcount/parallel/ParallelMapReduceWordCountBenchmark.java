@@ -5,13 +5,17 @@ import org.openjdk.jmh.annotations.*;
 import pl.symentis.mapreduce.core.MapReduce;
 import pl.symentis.mapreduce.parallel.ParallelMapReduce;
 import pl.symentis.wordcount.core.Stopwords;
+import pl.symentis.wordcount.core.StringSplitter;
 import pl.symentis.wordcount.core.WordCount;
 
 @State(Scope.Benchmark)
 public class ParallelMapReduceWordCountBenchmark {
 
-    @Param({"pl.symentis.wordcount.stopwords.ICUThreadLocalStopwords"})
+    @Param({"pl.symentis.wordcount.core.NonCollatorStopwords"})
     public String stopwordsClass;
+
+    @Param({"pl.symentis.wordcount.core.StringTokenizerSplitter"})
+    public String stringSplitterClass;
 
     @Param({"8"})
     public int threadPoolMaxSize;
@@ -27,6 +31,7 @@ public class ParallelMapReduceWordCountBenchmark {
     public void setUp() throws Exception {
         wordCount = new WordCount.Builder()
                 .withStopwords((Class<? extends Stopwords>) Class.forName(stopwordsClass))
+                .withStringSplitter((Class<? extends StringSplitter>) Class.forName(stringSplitterClass))
                 .build();
         mapReduce = new ParallelMapReduce.Builder()
                 .withPhaserMaxTasks(phaserMaxTasks)
