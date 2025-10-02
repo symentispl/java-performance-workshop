@@ -2,6 +2,7 @@ package pl.symentis.wordcount.sequential;
 
 import java.util.HashMap;
 import org.openjdk.jmh.annotations.*;
+import pl.symentis.mapreduce.core.Bootstrap;
 import pl.symentis.mapreduce.core.MapReduce;
 import pl.symentis.mapreduce.core.SequentialMapReduce;
 import pl.symentis.wordcount.core.WordCount;
@@ -17,18 +18,22 @@ public class SequentialMapReduceWordCountBenchmark {
 
     private WordCount wordCount;
     private MapReduce mapReduce;
+    private Bootstrap bootstrap;
 
     @SuppressWarnings("unchecked")
     @Setup(Level.Trial)
     public void setUp() throws Exception {
-        wordCount = new WordCount.Builder().withStopwords(stopwordsClass).build();
-        mapReduce = new SequentialMapReduce.Builder()
+        bootstrap = Bootstrap.create();
+        wordCount =
+                new WordCount.Builder(bootstrap).withStopwords(stopwordsClass).build();
+        mapReduce = new SequentialMapReduce.Builder(bootstrap)
                 .withMapperOutput(mapperOutputClass)
                 .build();
     }
 
     @TearDown(Level.Trial)
     public void tearDown() {
+        bootstrap.close();
         mapReduce.shutdown();
     }
 
