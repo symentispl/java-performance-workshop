@@ -2,9 +2,6 @@ package pl.symentis.mapreduce.core;
 
 import static java.lang.String.format;
 
-import io.github.classgraph.ClassGraph;
-import io.github.classgraph.ClassInfoList;
-import io.github.classgraph.ScanResult;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Objects;
 import java.util.Set;
@@ -14,8 +11,14 @@ public class SequentialMapReduce implements MapReduce {
 
     public static class Builder {
 
+        private final Bootstrap bootstrap;
+
         @SuppressWarnings("rawtypes")
         private Class<? extends MapperOutput> mapperOutputClass = HashMapOutput.class;
+
+        public Builder(Bootstrap bootstrap) {
+            this.bootstrap = Objects.requireNonNull(bootstrap);
+        }
 
         public Builder withMapperOutput(Class<? extends MapperOutput<?, ?>> mapperOutputClass) {
             this.mapperOutputClass = Objects.requireNonNull(mapperOutputClass);
@@ -25,7 +28,7 @@ public class SequentialMapReduce implements MapReduce {
         @SuppressWarnings("unchecked")
         public Builder withMapperOutput(String shortClassName) {
             this.mapperOutputClass =
-                    (Class<? extends MapperOutput>) findClassByShortName(shortClassName, MapperOutput.class);
+                    (Class<? extends MapperOutput>) bootstrap.findClassByShortName(shortClassName, MapperOutput.class);
             return this;
         }
 
@@ -47,19 +50,6 @@ public class SequentialMapReduce implements MapReduce {
             };
 
             return new SequentialMapReduce(supplier);
-        }
-
-        private static Class<?> findClassByShortName(String shortName, Class<?> interfaceClass) {
-            try (ScanResult scanResult = new ClassGraph().enableAllInfo().scan()) {
-                ClassInfoList classInfoList = scanResult.getClassesImplementing(interfaceClass);
-                return classInfoList.stream()
-                        .filter(classInfo -> classInfo.getSimpleName().equals(shortName))
-                        .findFirst()
-                        .orElseThrow(() -> new IllegalArgumentException(format(
-                                "cannot find class with short name %s implementing %s",
-                                shortName, interfaceClass.getName())))
-                        .loadClass();
-            }
         }
     }
 
