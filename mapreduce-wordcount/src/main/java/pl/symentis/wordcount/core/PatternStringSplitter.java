@@ -1,6 +1,5 @@
 package pl.symentis.wordcount.core;
 
-import java.util.Arrays;
 import java.util.regex.Pattern;
 
 public class PatternStringSplitter implements StringSplitter {
