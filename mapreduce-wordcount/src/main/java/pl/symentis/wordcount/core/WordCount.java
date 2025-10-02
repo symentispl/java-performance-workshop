@@ -2,6 +2,9 @@ package pl.symentis.wordcount.core;
 
 import static java.lang.String.format;
 
+import io.github.classgraph.ClassGraph;
+import io.github.classgraph.ClassInfoList;
+import io.github.classgraph.ScanResult;
 import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.util.NoSuchElementException;
@@ -22,8 +25,21 @@ public class WordCount {
             return this;
         }
 
+        @SuppressWarnings("unchecked")
+        public Builder withStopwords(String shortClassName) {
+            this.stopwordsClass = (Class<? extends Stopwords>) findClassByShortName(shortClassName, Stopwords.class);
+            return this;
+        }
+
         public Builder withStringSplitter(Class<? extends StringSplitter> splitterClass) {
             this.splitterClass = splitterClass;
+            return this;
+        }
+
+        @SuppressWarnings("unchecked")
+        public Builder withStringSplitter(String shortClassName) {
+            this.splitterClass =
+                    (Class<? extends StringSplitter>) findClassByShortName(shortClassName, StringSplitter.class);
             return this;
         }
 
@@ -41,6 +57,19 @@ public class WordCount {
                     | SecurityException
                     | InstantiationException e) {
                 throw new RuntimeException(format("cannot instantiate WordCount dependencies"), e);
+            }
+        }
+
+        private static Class<?> findClassByShortName(String shortName, Class<?> interfaceClass) {
+            try (ScanResult scanResult = new ClassGraph().enableAllInfo().scan()) {
+                ClassInfoList classInfoList = scanResult.getClassesImplementing(interfaceClass);
+                return classInfoList.stream()
+                        .filter(classInfo -> classInfo.getSimpleName().equals(shortName))
+                        .findFirst()
+                        .orElseThrow(() -> new IllegalArgumentException(format(
+                                "cannot find class with short name %s implementing %s",
+                                shortName, interfaceClass.getName())))
+                        .loadClass();
             }
         }
     }

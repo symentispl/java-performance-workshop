@@ -3,18 +3,16 @@ package pl.symentis.wordcount.sequential;
 import java.util.HashMap;
 import org.openjdk.jmh.annotations.*;
 import pl.symentis.mapreduce.core.MapReduce;
-import pl.symentis.mapreduce.core.MapperOutput;
 import pl.symentis.mapreduce.core.SequentialMapReduce;
-import pl.symentis.wordcount.core.Stopwords;
 import pl.symentis.wordcount.core.WordCount;
 
 @State(Scope.Benchmark)
 public class SequentialMapReduceWordCountBenchmark {
 
-    @Param({"pl.symentis.mapreduce.core.HashMapOutput"})
+    @Param({"HashMapOutput"})
     public String mapperOutputClass;
 
-    @Param({"pl.symentis.wordcount.core.NonThreadLocalStopwords"})
+    @Param({"NonThreadLocalStopwords"})
     public String stopwordsClass;
 
     private WordCount wordCount;
@@ -23,11 +21,9 @@ public class SequentialMapReduceWordCountBenchmark {
     @SuppressWarnings("unchecked")
     @Setup(Level.Trial)
     public void setUp() throws Exception {
-        wordCount = new WordCount.Builder()
-                .withStopwords((Class<? extends Stopwords>) Class.forName(stopwordsClass))
-                .build();
+        wordCount = new WordCount.Builder().withStopwords(stopwordsClass).build();
         mapReduce = new SequentialMapReduce.Builder()
-                .withMapperOutput((Class<? extends MapperOutput<?, ?>>) Class.forName(mapperOutputClass))
+                .withMapperOutput(mapperOutputClass)
                 .build();
     }
 
