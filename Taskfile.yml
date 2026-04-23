@@ -10,7 +10,7 @@ tasks:
   download-async-profiler:
     desc: "Install async-profiler"
     vars:
-      ASYNC_PROFILER_VERSION: "4.1"
+      ASYNC_PROFILER_VERSION: "4.3"
       ASYNC_PROFILER_LINUX_X86_URL: "https://github.com/async-profiler/async-profiler/releases/download/v{{.ASYNC_PROFILER_VERSION}}/async-profiler-{{.ASYNC_PROFILER_VERSION}}-linux-x64.tar.gz"
       ASYNC_PROFILER_LINUX_X86_ARCHIVE: "async-profiler-{{.ASYNC_PROFILER_VERSION}}-linux-x64.tar.gz"
       ASYNC_PROFILER_MACOS_URL: "https://github.com/async-profiler/async-profiler/releases/download/v{{.ASYNC_PROFILER_VERSION}}/async-profiler-{{.ASYNC_PROFILER_VERSION}}-macos.zip"
