@@ -1,10 +1,6 @@
 package pl.symentis.wordcount.core;
 
-import pl.symentis.mapreduce.core.Bootstrap;
-import pl.symentis.mapreduce.core.Input;
-import pl.symentis.mapreduce.core.Mapper;
-import pl.symentis.mapreduce.core.Output;
-import pl.symentis.mapreduce.core.Reducer;
+import static java.lang.String.format;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -17,8 +13,11 @@ import java.io.InputStreamReader;
 import java.lang.reflect.InvocationTargetException;
 import java.util.NoSuchElementException;
 import java.util.Objects;
-
-import static java.lang.String.format;
+import pl.symentis.mapreduce.core.Bootstrap;
+import pl.symentis.mapreduce.core.Input;
+import pl.symentis.mapreduce.core.Mapper;
+import pl.symentis.mapreduce.core.Output;
+import pl.symentis.mapreduce.core.Reducer;
 
 public class WordCount {
 
