@@ -40,13 +40,7 @@ public class ParallelMapReduce implements MapReduce {
     public <In, MK, MV, RK, RV> void run(
             Input<In> input, Mapper<In, MK, MV> mapper, Reducer<MK, MV, RK, RV> reducer, Output<RK, RV> output) {
 
-        Phaser rootPhaser = new Phaser() {
-            @Override
-            protected boolean onAdvance(int phase, int registeredParties) {
-                return phase == 0 && registeredParties == 0 && !input.hasNext();
-            }
-        };
-
+        Phaser rootPhaser = new Phaser(1);
         // map
         Map<MK, Collection<MV>> map = new ConcurrentHashMap<>();
         int tasksPerPhaser = 0;
@@ -66,6 +60,7 @@ public class ParallelMapReduce implements MapReduce {
             }
         }
 
+        rootPhaser.arriveAndDeregister();
         rootPhaser.awaitAdvance(0);
 
         // reduce
