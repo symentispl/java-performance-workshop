@@ -2,6 +2,7 @@ package pl.symentis.wordcount.parallel;
 
 import java.util.HashMap;
 import org.openjdk.jmh.annotations.*;
+import pl.symentis.mapreduce.core.Bootstrap;
 import pl.symentis.mapreduce.core.MapReduce;
 import pl.symentis.mapreduce.parallel.ParallelMapReduce;
 import pl.symentis.wordcount.core.Stopwords;
@@ -25,7 +26,7 @@ public class ParallelMapReduceWordCountBenchmark {
     @SuppressWarnings("unchecked")
     @Setup(Level.Trial)
     public void setUp() throws Exception {
-        wordCount = new WordCount.Builder()
+        wordCount = new WordCount.Builder(Bootstrap.create())
                 .withStopwords((Class<? extends Stopwords>) Class.forName(stopwordsClass))
                 .build();
         mapReduce = new ParallelMapReduce.Builder()

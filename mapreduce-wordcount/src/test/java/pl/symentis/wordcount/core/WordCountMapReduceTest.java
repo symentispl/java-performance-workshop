@@ -7,16 +7,18 @@ import java.io.FileNotFoundException;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import pl.symentis.mapreduce.core.Bootstrap;
 import pl.symentis.mapreduce.core.MapReduce;
 import pl.symentis.mapreduce.core.SequentialMapReduce;
 
 public interface WordCountMapReduceTest {
 
-    MapReduce mapReduce();
+    MapReduce mapReduce(Bootstrap bootstrap);
 
     @Test
     default void mapReduceWordCount() throws FileNotFoundException {
-        WordCount wordCount = new WordCount.Builder().build();
+        var bootstrap = Bootstrap.create();
+        WordCount wordCount = new WordCount.Builder(bootstrap).build();
 
         MapReduce workflow = new SequentialMapReduce.Builder().build();
         Map<String, Long> smap = new HashMap<>();
@@ -27,7 +29,7 @@ public interface WordCountMapReduceTest {
                 smap::put);
         workflow.shutdown();
 
-        workflow = mapReduce();
+        workflow = mapReduce(bootstrap);
         Map<String, Long> fmap = new HashMap<>();
         workflow.run(
                 wordCount.input(new File("src/test/resources/big.txt")),

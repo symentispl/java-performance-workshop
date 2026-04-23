@@ -147,12 +147,7 @@ public class BatchingMapReduce implements MapReduce {
     private <In, MK, MV, RK, RV> void runWithLocalOutputs(
             Input<In> input, Mapper<In, MK, MV> mapper, Reducer<MK, MV, RK, RV> reducer, Output<RK, RV> output) {
 
-        Phaser rootPhaser = new Phaser() {
-            @Override
-            protected boolean onAdvance(int phase, int registeredParties) {
-                return phase == 0 && registeredParties == 0 && !input.hasNext();
-            }
-        };
+        Phaser rootPhaser = new Phaser(1);
 
         int tasksPerPhaser = 0;
         Phaser phaser = new Phaser(rootPhaser);
@@ -178,6 +173,7 @@ public class BatchingMapReduce implements MapReduce {
             }
         }
 
+        rootPhaser.arriveAndDeregister();
         rootPhaser.awaitAdvance(0);
 
         Map<MK, List<MV>> map = merge(mapResults, reducer);

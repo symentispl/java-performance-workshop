@@ -13,6 +13,7 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import pl.symentis.mapreduce.batching.BatchingMapReduce;
+import pl.symentis.mapreduce.core.Bootstrap;
 import pl.symentis.mapreduce.core.MapReduce;
 import pl.symentis.mapreduce.offheap.LongSerializationStrategy;
 import pl.symentis.mapreduce.offheap.StringSerializationStrategy;
@@ -43,7 +44,7 @@ public class RocksDBMapReduceWordCountBenchmark {
     @Setup(Level.Trial)
     public void setUp() throws Exception {
         rocksDbPath = Files.createTempDirectory("rocksdb-bench-");
-        wordCount = new WordCount.Builder()
+        wordCount = new WordCount.Builder(Bootstrap.create())
                 .withStopwords((Class<? extends Stopwords>) Class.forName(stopwordsClass))
                 .build();
         mapReduce = new BatchingMapReduce.Builder()
