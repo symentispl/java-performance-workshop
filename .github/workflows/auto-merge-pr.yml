@@ -2,7 +2,7 @@ name: Auto Merge PR
 
 on:
   push:
-    branches: [ master, parallel, batching, workstealing, virtualthreads ]
+    branches: [ master, parallel, batching, workstealing, virtualthreads,ondisk,server,observability]
   workflow_dispatch:
     inputs:
       source_branch:
@@ -21,8 +21,9 @@ env:
     parallel=batching
     batching=workstealing
     workstealing=virtualthreads
-    virtualthreads=ondisk
-    ondisk=server
+    virtualthreads=server
+    server=ondisk
+    ondisk=observability
 
 jobs:
   create-merge-pr:

@@ -1,47 +1,33 @@
 package pl.symentis.mapreduce.core;
 
-import static java.lang.String.format;
-
-import java.lang.reflect.InvocationTargetException;
-import java.util.Objects;
 import java.util.Set;
 import java.util.function.Supplier;
+
+import static java.util.Objects.requireNonNull;
 
 public class SequentialMapReduce implements MapReduce {
 
     public static class Builder {
 
-        @SuppressWarnings("rawtypes")
-        private Class<? extends MapperOutput> mapperOutputClass = HashMapOutput.class;
 
-        public Builder withMapperOutput(Class<? extends MapperOutput<?, ?>> mapperOutputClass) {
-            this.mapperOutputClass = Objects.requireNonNull(mapperOutputClass);
+        @SuppressWarnings("rawtypes")
+        private Supplier<? extends MapperOutput> mapperOutputSupplier = HashMapOutput::new;
+
+
+
+        @SuppressWarnings("rawtypes")
+        public Builder withMapperOutputSupplier(Supplier<? extends MapperOutput> supplier) {
+            this.mapperOutputSupplier = requireNonNull(supplier);
             return this;
         }
 
         public MapReduce build() {
-
-            @SuppressWarnings("rawtypes")
-            Supplier<? extends MapperOutput> supplier = () -> {
-                try {
-                    return mapperOutputClass.getConstructor().newInstance();
-                } catch (InstantiationException
-                        | IllegalAccessException
-                        | IllegalArgumentException
-                        | InvocationTargetException
-                        | NoSuchMethodException
-                        | SecurityException e) {
-                    throw new IllegalArgumentException(
-                            format("cannot instantiate mapper output class %s", mapperOutputClass), e);
-                }
-            };
-
-            return new SequentialMapReduce(supplier);
+            return new SequentialMapReduce(mapperOutputSupplier);
         }
     }
 
     @SuppressWarnings("rawtypes")
-    private Supplier<? extends MapperOutput> mapperOutputSupplier;
+    private final Supplier<? extends MapperOutput> mapperOutputSupplier;
 
     @SuppressWarnings("rawtypes")
     private SequentialMapReduce(Supplier<? extends MapperOutput> mapperOutputSupplier) {
@@ -67,6 +53,5 @@ public class SequentialMapReduce implements MapReduce {
 
     @Override
     public void shutdown() {
-        ;
     }
 }

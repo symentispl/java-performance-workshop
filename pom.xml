@@ -88,11 +88,17 @@
                 <version>4.3.0</version>
                 <scope>test</scope>
             </dependency>
+            <dependency>
+                <groupId>org.rocksdb</groupId>
+                <artifactId>rocksdbjni</artifactId>
+                <version>9.7.3</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
     <modules>
         <module>mapreduce-framework</module>
+        <module>mapreduce-rocksdb</module>
         <module>mapreduce-wordcount</module>
         <module>mapreduce-perf</module>
         <module>mapreduce-server</module>

@@ -1,5 +1,9 @@
-package pl.symentis.wordcount.offheap;
+package pl.symentis.wordcount.rocksdb;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Comparator;
 import java.util.HashMap;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Level;
@@ -10,13 +14,14 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import pl.symentis.mapreduce.batching.BatchingMapReduce;
 import pl.symentis.mapreduce.core.MapReduce;
-import pl.symentis.mapreduce.offheap.JavaSerializationStrategy;
-import pl.symentis.mapreduce.offheap.ShardedOffHeapMapperOutput;
+import pl.symentis.mapreduce.offheap.LongSerializationStrategy;
+import pl.symentis.mapreduce.offheap.StringSerializationStrategy;
+import pl.symentis.mapreduce.rocksdb.RocksDBMapperOutput;
 import pl.symentis.wordcount.core.Stopwords;
 import pl.symentis.wordcount.core.WordCount;
 
 @State(Scope.Benchmark)
-public class OffHeapMapReduceWordCountBenchmark {
+public class RocksDBMapReduceWordCountBenchmark {
 
     @Param({"pl.symentis.wordcount.stopwords.ICUThreadLocalStopwords"})
     public String stopwordsClass;
@@ -32,10 +37,12 @@ public class OffHeapMapReduceWordCountBenchmark {
 
     private WordCount wordCount;
     private MapReduce mapReduce;
+    private Path rocksDbPath;
 
     @SuppressWarnings("unchecked")
     @Setup(Level.Trial)
     public void setUp() throws Exception {
+        rocksDbPath = Files.createTempDirectory("rocksdb-bench-");
         wordCount = new WordCount.Builder()
                 .withStopwords((Class<? extends Stopwords>) Class.forName(stopwordsClass))
                 .build();
@@ -44,23 +51,29 @@ public class OffHeapMapReduceWordCountBenchmark {
                 .withThreadPoolSize(threadPoolMaxSize)
                 .withBatchSize(batchSize)
                 .withMapperOutputSupplier(
-                        () -> new ShardedOffHeapMapperOutput<>(new JavaSerializationStrategy<>(), new JavaSerializationStrategy<>()))
+                        () -> new RocksDBMapperOutput<>(rocksDbPath, new StringSerializationStrategy(), new LongSerializationStrategy()))
                 .build();
     }
 
     @TearDown(Level.Trial)
-    public void tearDown() {
+    public void tearDown() throws IOException {
         mapReduce.shutdown();
+        Files.walk(rocksDbPath).sorted(Comparator.reverseOrder()).forEach(p -> {
+            try {
+                Files.deleteIfExists(p);
+            } catch (IOException ignored) {
+            }
+        });
     }
 
     @Benchmark
     public Object countWords() throws Exception {
-        HashMap<String, Long> result = new HashMap<>();
+        HashMap<String, Long> map = new HashMap<>();
         mapReduce.run(
-                wordCount.input(OffHeapMapReduceWordCountBenchmark.class.getResourceAsStream("/big.txt")),
+                wordCount.input(RocksDBMapReduceWordCountBenchmark.class.getResourceAsStream("/big.txt")),
                 wordCount.mapper(),
                 wordCount.reducer(),
-                result::put);
-        return result;
+                map::put);
+        return map;
     }
 }

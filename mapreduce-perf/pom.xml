@@ -41,6 +41,11 @@
             <type>test-jar</type>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>pl.symentis.mapreduce</groupId>
+            <artifactId>mapreduce-rocksdb</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 
     <build>

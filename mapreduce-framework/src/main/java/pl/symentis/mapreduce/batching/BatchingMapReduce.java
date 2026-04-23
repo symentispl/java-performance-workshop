@@ -1,11 +1,30 @@
 package pl.symentis.mapreduce.batching;
 
-import static java.util.stream.Collectors.*;
-
-import java.util.*;
-import java.util.concurrent.*;
-import pl.symentis.mapreduce.core.*;
 import pl.symentis.mapreduce.core.HashMapOutput;
+import pl.symentis.mapreduce.core.Input;
+import pl.symentis.mapreduce.core.IteratorInput;
+import pl.symentis.mapreduce.core.MapReduce;
+import pl.symentis.mapreduce.core.MapReduceException;
+import pl.symentis.mapreduce.core.Mapper;
+import pl.symentis.mapreduce.core.MapperOutput;
+import pl.symentis.mapreduce.core.Output;
+import pl.symentis.mapreduce.core.Reducer;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Phaser;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
+
+import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.mapping;
+import static java.util.stream.Collectors.reducing;
 
 public class BatchingMapReduce implements MapReduce {
 
@@ -14,6 +33,9 @@ public class BatchingMapReduce implements MapReduce {
         private int threadPoolMaxSize = Runtime.getRuntime().availableProcessors();
         private int phaserMaxTasks = 1000;
         private int batchSize = 10000;
+
+        @SuppressWarnings("rawtypes")
+        private Supplier<? extends MapperOutput> mapperOutputSupplier = null;
 
         public Builder withThreadPoolSize(int threadPoolMaxSize) {
             this.threadPoolMaxSize = threadPoolMaxSize;
@@ -30,8 +52,14 @@ public class BatchingMapReduce implements MapReduce {
             return this;
         }
 
+        @SuppressWarnings("rawtypes")
+        public Builder withMapperOutputSupplier(Supplier<? extends MapperOutput> supplier) {
+            this.mapperOutputSupplier = supplier;
+            return this;
+        }
+
         public MapReduce build() {
-            return new BatchingMapReduce(threadPoolMaxSize, phaserMaxTasks, batchSize);
+            return new BatchingMapReduce(threadPoolMaxSize, phaserMaxTasks, batchSize, mapperOutputSupplier);
         }
     }
 
@@ -39,14 +67,84 @@ public class BatchingMapReduce implements MapReduce {
     private final int phaserMaxTasks;
     private final int batchSize;
 
-    public BatchingMapReduce(int threadPoolMaxSize, int phaserMaxTasks, int batchSize) {
+    @SuppressWarnings("rawtypes")
+    private final Supplier<? extends MapperOutput> mapperOutputSupplier;
+
+    @SuppressWarnings("rawtypes")
+    public BatchingMapReduce(
+            int threadPoolMaxSize,
+            int phaserMaxTasks,
+            int batchSize,
+            Supplier<? extends MapperOutput> mapperOutputSupplier) {
         this.executorService = Executors.newFixedThreadPool(threadPoolMaxSize);
         this.phaserMaxTasks = phaserMaxTasks;
         this.batchSize = batchSize;
+        this.mapperOutputSupplier = mapperOutputSupplier;
     }
 
     @Override
     public <In, MK, MV, RK, RV> void run(
+            Input<In> input, Mapper<In, MK, MV> mapper, Reducer<MK, MV, RK, RV> reducer, Output<RK, RV> output) {
+
+        if (mapperOutputSupplier != null) {
+            runWithSharedOutput(input, mapper, reducer, output);
+        } else {
+            runWithLocalOutputs(input, mapper, reducer, output);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private <In, MK, MV, RK, RV> void runWithSharedOutput(
+            Input<In> input, Mapper<In, MK, MV> mapper, Reducer<MK, MV, RK, RV> reducer, Output<RK, RV> output) {
+
+        MapperOutput<MK, MV> mapperOutput = (MapperOutput<MK, MV>) mapperOutputSupplier.get();
+
+        try {
+            Phaser rootPhaser = new Phaser() {
+                @Override
+                protected boolean onAdvance(int phase, int registeredParties) {
+                    return phase == 0 && registeredParties == 0 && !input.hasNext();
+                }
+            };
+
+            int tasksPerPhaser = 0;
+            Phaser phaser = new Phaser(rootPhaser);
+            ArrayList<In> batch = new ArrayList<>(batchSize);
+
+            while (input.hasNext()) {
+                batch.add(input.next());
+
+                if (batch.size() == batchSize || !input.hasNext()) {
+                    phaser.register();
+                    executorService.submit(
+                            new SharedMapperPhase<>(new IteratorInput<>(batch.iterator()), mapper, mapperOutput, phaser));
+
+                    tasksPerPhaser++;
+                    if (tasksPerPhaser >= phaserMaxTasks) {
+                        phaser = new Phaser(rootPhaser);
+                        tasksPerPhaser = 0;
+                    }
+                    batch = new ArrayList<>(batchSize);
+                }
+            }
+
+            rootPhaser.awaitAdvance(0);
+
+            for (MK key : mapperOutput.keys()) {
+                reducer.reduce(key, () -> mapperOutput.values(key), output);
+            }
+        } finally {
+            if (mapperOutput instanceof AutoCloseable closeable) {
+                try {
+                    closeable.close();
+                } catch (Exception e) {
+                    throw new MapReduceException(e);
+                }
+            }
+        }
+    }
+
+    private <In, MK, MV, RK, RV> void runWithLocalOutputs(
             Input<In> input, Mapper<In, MK, MV> mapper, Reducer<MK, MV, RK, RV> reducer, Output<RK, RV> output) {
 
         Phaser rootPhaser = new Phaser() {
@@ -56,7 +154,6 @@ public class BatchingMapReduce implements MapReduce {
             }
         };
 
-        // map
         int tasksPerPhaser = 0;
         Phaser phaser = new Phaser(rootPhaser);
 
@@ -83,10 +180,7 @@ public class BatchingMapReduce implements MapReduce {
 
         rootPhaser.awaitAdvance(0);
 
-        // merge map results
         Map<MK, List<MV>> map = merge(mapResults, reducer);
-
-        // reduce
         reduce(reducer, output, map);
     }
 
@@ -121,6 +215,29 @@ public class BatchingMapReduce implements MapReduce {
             executorService.awaitTermination(1, TimeUnit.MINUTES);
         } catch (InterruptedException e) {
             throw new MapReduceException(e);
+        }
+    }
+
+    static final class SharedMapperPhase<I, K, V> implements Runnable {
+
+        private final Input<I> input;
+        private final Mapper<I, K, V> mapper;
+        private final MapperOutput<K, V> mapperOutput;
+        private final Phaser phaser;
+
+        SharedMapperPhase(Input<I> input, Mapper<I, K, V> mapper, MapperOutput<K, V> mapperOutput, Phaser phaser) {
+            this.input = input;
+            this.mapper = mapper;
+            this.mapperOutput = mapperOutput;
+            this.phaser = phaser;
+        }
+
+        @Override
+        public void run() {
+            while (input.hasNext()) {
+                mapper.map(input.next(), mapperOutput);
+            }
+            phaser.arriveAndDeregister();
         }
     }
 

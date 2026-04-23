@@ -12,20 +12,20 @@ import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.ServiceLoader;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import pl.symentis.mapreduce.batching.BatchingMapReduce;
 import pl.symentis.mapreduce.core.Job;
 import pl.symentis.mapreduce.core.JobFactory;
 import pl.symentis.mapreduce.core.MapReduce;
+import pl.symentis.mapreduce.batching.BatchingMapReduce;
+import pl.symentis.mapreduce.offheap.LongSerializationStrategy;
+import pl.symentis.mapreduce.offheap.StringSerializationStrategy;
+import pl.symentis.mapreduce.rocksdb.RocksDBMapperOutput;
 
 class Server {
 
@@ -87,6 +87,8 @@ class Server {
                 throw new RuntimeException(e);
             }
         }
+
+        mapReduce.shutdown();
     }
 
     private void createJob(Context ctx) {
@@ -204,7 +206,7 @@ class Server {
             try {
                 if (Files.exists(jobDir)) {
                     Files.walk(jobDir)
-                            .sorted((a, b) -> b.compareTo(a)) // Delete files before directories
+                            .sorted(Comparator.reverseOrder()) // Delete files before directories
                             .forEach(path -> {
                                 try {
                                     Files.deleteIfExists(path);
@@ -286,10 +288,14 @@ class Server {
         Server build() throws IOException {
 
             LOG.info("initializing map reduce framework");
+            var rocksDbPath = jobsDir.resolve("rocksdb");
+            Files.createDirectories(rocksDbPath);
             var mapReduce = new BatchingMapReduce.Builder()
                     .withBatchSize(1000)
                     .withPhaserMaxTasks(10000)
                     .withThreadPoolSize(Runtime.getRuntime().availableProcessors())
+                    .withMapperOutputSupplier(() -> new RocksDBMapperOutput<>(
+                            rocksDbPath, new StringSerializationStrategy(), new LongSerializationStrategy()))
                     .build();
 
             return create(port, mapReduce, jobsDir);
