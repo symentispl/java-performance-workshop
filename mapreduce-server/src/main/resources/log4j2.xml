@@ -13,6 +13,7 @@
         <Root level="info">
             <AppenderRef ref="Console"/>
         </Root>
-        <Logger name="pl.symentis.mapreduce" level="DEBUG"/>
+        <Logger name="pl.symentis.mapreduce" level="ERROR"/>
+        <Logger name="latencyStats" level="INFO"/>
     </Loggers>
 </Configuration>

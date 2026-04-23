@@ -3,15 +3,16 @@ package pl.symentis.mapreduce.server;
 import com.github.rvesse.airline.annotations.Command;
 import com.github.rvesse.airline.annotations.Option;
 import com.github.rvesse.airline.annotations.restrictions.Required;
-import com.google.gson.Gson;
-import io.javalin.Javalin;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.concurrent.Executors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import pl.symentis.mapreduce.batching.BatchingMapReduce;
+import pl.symentis.mapreduce.offheap.LongSerializationStrategy;
+import pl.symentis.mapreduce.offheap.StringSerializationStrategy;
+import pl.symentis.mapreduce.rocksdb.RocksDBMapperOutput;
 
 @Command(name = "bootstrap")
 public class ServerCommand implements Runnable {
@@ -25,10 +26,17 @@ public class ServerCommand implements Runnable {
     @Required
     private Path jobsDir;
 
+    @Option(name = "--mapper-output")
+    private String mapperOutput = "hashmap";
+
     @Override
     public void run() {
         try {
-            var server = new Builder().port(port).jobsDir(jobsDir).build();
+            var server = new Builder()
+                    .port(port)
+                    .jobsDir(jobsDir)
+                    .mapperOutput(mapperOutput)
+                    .build();
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                 try {
                     server.stop();
@@ -45,6 +53,7 @@ public class ServerCommand implements Runnable {
     public static class Builder {
         private int port = 8080;
         private Path jobsDir;
+        private String mapperOutput = "hashmap";
 
         public Builder port(int port) {
             this.port = port;
@@ -56,21 +65,31 @@ public class ServerCommand implements Runnable {
             return this;
         }
 
-        public Server build() throws IOException {
-            LOG.info("initializing HTTP server on port {}", port);
-            var javalin = Javalin.create();
+        public Builder mapperOutput(String mapperOutput) {
+            this.mapperOutput = mapperOutput;
+            return this;
+        }
 
-            LOG.info("initializing map reduce framework");
-            var mapReduce = new BatchingMapReduce.Builder()
+        public Server build() throws IOException {
+            LOG.info("initializing map reduce framework with mapper output: {}", mapperOutput);
+
+            var batchingBuilder = new BatchingMapReduce.Builder()
                     .withBatchSize(1000)
                     .withPhaserMaxTasks(10000)
-                    .withThreadPoolSize(Runtime.getRuntime().availableProcessors())
-                    .build();
+                    .withThreadPoolSize(Runtime.getRuntime().availableProcessors());
 
-            var executorService =
-                    Executors.newScheduledThreadPool(Runtime.getRuntime().availableProcessors() + 1);
+            if ("rocksdb".equalsIgnoreCase(mapperOutput)) {
+                var rocksDbPath = jobsDir.resolve("rocksdb");
+                Files.createDirectories(rocksDbPath);
+                var factory = new RocksDBMapperOutput.Factory(rocksDbPath);
+                batchingBuilder.withMapperOutputSupplier(
+                        () -> factory.create(new StringSerializationStrategy(), new LongSerializationStrategy()));
+                var mapReduce = batchingBuilder.build();
+                return Server.create(port, mapReduce, jobsDir, factory);
+            }
 
-            return new Server(javalin, port, executorService,  mapReduce, jobsDir);
+            var mapReduce = batchingBuilder.build();
+            return Server.create(port, mapReduce, jobsDir);
         }
     }
 }

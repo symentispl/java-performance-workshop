@@ -13,6 +13,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+import org.HdrHistogram.Histogram;
+import org.HdrHistogram.Recorder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,6 +23,7 @@ import org.slf4j.LoggerFactory;
 public class BenchCommand implements Runnable {
 
     private static final Logger LOG = LoggerFactory.getLogger(BenchCommand.class);
+    private static final Logger LATENCY_STATS_LOG = LoggerFactory.getLogger("latencyStats");
 
     @Option(name = "--server-url")
     @Required
@@ -27,6 +31,9 @@ public class BenchCommand implements Runnable {
 
     @Option(name = "--job-interval-ms")
     private int jobIntervalMillis = 200;
+
+    private final Recorder latencyRecorder = new Recorder(TimeUnit.HOURS.toMillis(1), 3);
+    private final AtomicLong failedJobCount = new AtomicLong();
 
     @Override
     public void run() {
@@ -36,7 +43,6 @@ public class BenchCommand implements Runnable {
 
         LOG.debug("starting benchmark with job interval {}ms", jobIntervalMillis);
 
-        // Schedule job submissions at fixed intervals to avoid coordinated omission
         scheduler.scheduleAtFixedRate(
                 () -> {
                     try {
@@ -49,7 +55,8 @@ public class BenchCommand implements Runnable {
                 jobIntervalMillis,
                 TimeUnit.MILLISECONDS);
 
-        // Add shutdown hook for graceful cleanup
+        scheduler.scheduleAtFixedRate(this::logLatencyStats, 10, 10, TimeUnit.SECONDS);
+
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             LOG.debug("shutting down benchmark");
             scheduler.shutdown();
@@ -65,6 +72,7 @@ public class BenchCommand implements Runnable {
             } catch (Exception e) {
                 LOG.error("error during benchmark shutdown", e);
             }
+            logLatencyStats();
         }));
 
         try {
@@ -73,6 +81,28 @@ public class BenchCommand implements Runnable {
             LOG.warn("benchmark interrupted");
             Thread.currentThread().interrupt();
         }
+    }
+
+    private void logLatencyStats() {
+        Histogram h = latencyRecorder.getIntervalHistogram();
+        long failed = failedJobCount.getAndSet(0);
+        if (h.getTotalCount() == 0 && failed == 0) {
+            LATENCY_STATS_LOG.info("latency stats (last 10s): no completed jobs");
+            return;
+        }
+        LATENCY_STATS_LOG.info(
+                "latency stats (ms) count={} failed={} min={} p50={} p75={} p90={} p95={} p99={} p99.9={} max={} mean={}",
+                h.getTotalCount(),
+                failed,
+                h.getMinValue(),
+                h.getValueAtPercentile(50.0),
+                h.getValueAtPercentile(75.0),
+                h.getValueAtPercentile(90.0),
+                h.getValueAtPercentile(95.0),
+                h.getValueAtPercentile(99.0),
+                h.getValueAtPercentile(99.9),
+                h.getMaxValue(),
+                String.format("%.1f", h.getMean()));
     }
 
     private void submitJobAsync(MapReduceServerClient client, ExecutorService jobProcessor) {
@@ -104,6 +134,10 @@ public class BenchCommand implements Runnable {
 
         } finally {
             long completionTime = System.currentTimeMillis();
+            latencyRecorder.recordValue(completionTime - startTime);
+            if (results == null || results.status() == JobStatus.FAILED) {
+                failedJobCount.incrementAndGet();
+            }
             cleanupJob(client, results, jobId, completionTime, startTime);
         }
     }
@@ -118,7 +152,6 @@ public class BenchCommand implements Runnable {
                     results.status(),
                     results.results().size());
 
-            // Clean up job by deleting it
             try {
                 client.deleteJob(jobId);
                 LOG.debug("cleaned up job {}", jobId);
@@ -156,7 +189,7 @@ public class BenchCommand implements Runnable {
                     }
                     return results;
                 }
-                return results; // Will trigger retry if null or RUNNING
+                return results;
             });
         } catch (Exception e) {
             LOG.error("Job {} timed out or failed after 60 seconds", jobId);

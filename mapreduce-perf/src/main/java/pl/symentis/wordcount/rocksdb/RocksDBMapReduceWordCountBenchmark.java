@@ -51,8 +51,8 @@ public class RocksDBMapReduceWordCountBenchmark {
                 .withPhaserMaxTasks(phaserMaxTasks)
                 .withThreadPoolSize(threadPoolMaxSize)
                 .withBatchSize(batchSize)
-                .withMapperOutputSupplier(
-                        () -> new RocksDBMapperOutput<>(rocksDbPath, new StringSerializationStrategy(), new LongSerializationStrategy()))
+                .withMapperOutputSupplier(() -> new RocksDBMapperOutput<>(
+                        rocksDbPath, new StringSerializationStrategy(), new LongSerializationStrategy()))
                 .build();
     }
 

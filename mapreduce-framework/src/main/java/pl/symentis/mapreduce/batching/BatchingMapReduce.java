@@ -1,14 +1,8 @@
 package pl.symentis.mapreduce.batching;
 
-import pl.symentis.mapreduce.core.HashMapOutput;
-import pl.symentis.mapreduce.core.Input;
-import pl.symentis.mapreduce.core.IteratorInput;
-import pl.symentis.mapreduce.core.MapReduce;
-import pl.symentis.mapreduce.core.MapReduceException;
-import pl.symentis.mapreduce.core.Mapper;
-import pl.symentis.mapreduce.core.MapperOutput;
-import pl.symentis.mapreduce.core.Output;
-import pl.symentis.mapreduce.core.Reducer;
+import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.mapping;
+import static java.util.stream.Collectors.reducing;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,10 +15,15 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Phaser;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
-
-import static java.util.stream.Collectors.groupingBy;
-import static java.util.stream.Collectors.mapping;
-import static java.util.stream.Collectors.reducing;
+import pl.symentis.mapreduce.core.HashMapOutput;
+import pl.symentis.mapreduce.core.Input;
+import pl.symentis.mapreduce.core.IteratorInput;
+import pl.symentis.mapreduce.core.MapReduce;
+import pl.symentis.mapreduce.core.MapReduceException;
+import pl.symentis.mapreduce.core.Mapper;
+import pl.symentis.mapreduce.core.MapperOutput;
+import pl.symentis.mapreduce.core.Output;
+import pl.symentis.mapreduce.core.Reducer;
 
 public class BatchingMapReduce implements MapReduce {
 
@@ -116,8 +115,8 @@ public class BatchingMapReduce implements MapReduce {
 
                 if (batch.size() == batchSize || !input.hasNext()) {
                     phaser.register();
-                    executorService.submit(
-                            new SharedMapperPhase<>(new IteratorInput<>(batch.iterator()), mapper, mapperOutput, phaser));
+                    executorService.submit(new SharedMapperPhase<>(
+                            new IteratorInput<>(batch.iterator()), mapper, mapperOutput, phaser));
 
                     tasksPerPhaser++;
                     if (tasksPerPhaser >= phaserMaxTasks) {

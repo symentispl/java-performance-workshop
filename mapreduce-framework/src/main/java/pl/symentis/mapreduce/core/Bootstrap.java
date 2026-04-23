@@ -24,8 +24,7 @@ public class Bootstrap implements AutoCloseable {
                 .filter(classInfo -> classInfo.getSimpleName().equals(shortName))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException(format(
-                        "cannot find class with short name %s implementing %s",
-                        shortName, interfaceClass.getName())))
+                        "cannot find class with short name %s implementing %s", shortName, interfaceClass.getName())))
                 .loadClass();
     }
 

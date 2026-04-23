@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.UncheckedIOException;
 import java.util.Map;
-
 import pl.symentis.mapreduce.core.Bootstrap;
 import pl.symentis.mapreduce.core.Job;
 import pl.symentis.mapreduce.core.JobFactory;

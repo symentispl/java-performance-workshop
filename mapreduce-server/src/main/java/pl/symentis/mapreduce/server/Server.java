@@ -17,14 +17,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import pl.symentis.mapreduce.batching.BatchingMapReduce;
 import pl.symentis.mapreduce.core.Job;
 import pl.symentis.mapreduce.core.JobFactory;
 import pl.symentis.mapreduce.core.MapReduce;
-import pl.symentis.mapreduce.batching.BatchingMapReduce;
 import pl.symentis.mapreduce.offheap.LongSerializationStrategy;
 import pl.symentis.mapreduce.offheap.StringSerializationStrategy;
 import pl.symentis.mapreduce.rocksdb.RocksDBMapperOutput;
@@ -34,6 +32,10 @@ class Server {
     private static final Logger LOG = LoggerFactory.getLogger(Server.class);
 
     static Server create(int port, MapReduce mapReduce, Path jobsDir) {
+        return create(port, mapReduce, jobsDir, null);
+    }
+
+    static Server create(int port, MapReduce mapReduce, Path jobsDir, AutoCloseable onStop) {
         LOG.info("initializing HTTP server on port {}", port);
         var gson = new Gson();
         var javalin = Javalin.create(config -> config.jsonMapper(new GsonMapper(gson)));
@@ -48,7 +50,7 @@ class Server {
                     "Failed to create jobs storage directory %s".formatted(jobsDir.toAbsolutePath()), e);
         }
 
-        return new Server(javalin, port, executorService, mapReduce, jobsDir);
+        return new Server(javalin, port, executorService, mapReduce, jobsDir, onStop);
     }
 
     private final Javalin app;
@@ -56,14 +58,26 @@ class Server {
     private final ScheduledExecutorService executorService;
     private final MapReduce mapReduce;
     private final Path jobsDir;
+    private final AutoCloseable onStop;
     private final ConcurrentHashMap<String, JobResults> jobResults = new ConcurrentHashMap<>();
 
     public Server(Javalin app, int port, ScheduledExecutorService executorService, MapReduce mapReduce, Path jobsDir) {
+        this(app, port, executorService, mapReduce, jobsDir, null);
+    }
+
+    public Server(
+            Javalin app,
+            int port,
+            ScheduledExecutorService executorService,
+            MapReduce mapReduce,
+            Path jobsDir,
+            AutoCloseable onStop) {
         this.app = app;
         this.port = port;
         this.executorService = executorService;
         this.mapReduce = mapReduce;
         this.jobsDir = jobsDir;
+        this.onStop = onStop;
     }
 
     public void start() {
@@ -91,6 +105,14 @@ class Server {
         }
 
         mapReduce.shutdown();
+
+        if (onStop != null) {
+            try {
+                onStop.close();
+            } catch (Exception e) {
+                LOG.warn("Error closing server resource on stop", e);
+            }
+        }
     }
 
     private void createJob(Context ctx) {
@@ -292,15 +314,16 @@ class Server {
             LOG.info("initializing map reduce framework");
             var rocksDbPath = jobsDir.resolve("rocksdb");
             Files.createDirectories(rocksDbPath);
+            var factory = new RocksDBMapperOutput.Factory(rocksDbPath);
             var mapReduce = new BatchingMapReduce.Builder()
                     .withBatchSize(1000)
                     .withPhaserMaxTasks(10000)
                     .withThreadPoolSize(Runtime.getRuntime().availableProcessors())
-                    .withMapperOutputSupplier(() -> new RocksDBMapperOutput<>(
-                            rocksDbPath, new StringSerializationStrategy(), new LongSerializationStrategy()))
+                    .withMapperOutputSupplier(
+                            () -> factory.create(new StringSerializationStrategy(), new LongSerializationStrategy()))
                     .build();
 
-            return create(port, mapReduce, jobsDir);
+            return create(port, mapReduce, jobsDir, factory);
         }
     }
 }

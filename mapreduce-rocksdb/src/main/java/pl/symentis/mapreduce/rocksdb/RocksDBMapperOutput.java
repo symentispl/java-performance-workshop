@@ -40,13 +40,22 @@ public class RocksDBMapperOutput<K, V> implements MapperOutput<K, V>, AutoClosea
     public RocksDBMapperOutput(
             Path dbPath, SerializationStrategy<K> keySerializer, SerializationStrategy<V> valueSerializer) {
         try {
-            this.options = new Options()
-                    .setCreateIfMissing(true)
-                    .useFixedLengthPrefixExtractor(NAMESPACE_SIZE);
+            this.options = new Options().setCreateIfMissing(true).useFixedLengthPrefixExtractor(NAMESPACE_SIZE);
             this.db = RocksDB.open(options, dbPath.toAbsolutePath().toString());
         } catch (RocksDBException e) {
             throw new MapReduceException(e);
         }
+        UUID uuid = UUID.randomUUID();
+        this.namespace = uuidToBytes(uuid);
+        this.namespaceEnd = incrementBytes(this.namespace);
+        this.keySerializer = keySerializer;
+        this.valueSerializer = valueSerializer;
+    }
+
+    // shared-connection constructor — does not own the db/options lifecycle
+    RocksDBMapperOutput(RocksDB db, SerializationStrategy<K> keySerializer, SerializationStrategy<V> valueSerializer) {
+        this.db = db;
+        this.options = null;
         UUID uuid = UUID.randomUUID();
         this.namespace = uuidToBytes(uuid);
         this.namespaceEnd = incrementBytes(this.namespace);
@@ -61,8 +70,40 @@ public class RocksDBMapperOutput<K, V> implements MapperOutput<K, V>, AutoClosea
         } catch (RocksDBException e) {
             throw new MapReduceException(e);
         }
-        db.close();
-        options.close();
+        if (options != null) {
+            db.close();
+            options.close();
+        }
+    }
+
+    /**
+     * Opens a single RocksDB connection and vends {@link RocksDBMapperOutput} instances that share it,
+     * each isolated by a unique UUID namespace. Close the factory when the owning component shuts down.
+     */
+    public static class Factory implements AutoCloseable {
+
+        private final RocksDB db;
+        private final Options options;
+
+        public Factory(Path dbPath) {
+            try {
+                this.options = new Options().setCreateIfMissing(true).useFixedLengthPrefixExtractor(NAMESPACE_SIZE);
+                this.db = RocksDB.open(options, dbPath.toAbsolutePath().toString());
+            } catch (RocksDBException e) {
+                throw new MapReduceException(e);
+            }
+        }
+
+        public <K, V> RocksDBMapperOutput<K, V> create(
+                SerializationStrategy<K> keySerializer, SerializationStrategy<V> valueSerializer) {
+            return new RocksDBMapperOutput<>(db, keySerializer, valueSerializer);
+        }
+
+        @Override
+        public void close() {
+            db.close();
+            options.close();
+        }
     }
 
     private static byte[] uuidToBytes(UUID uuid) {

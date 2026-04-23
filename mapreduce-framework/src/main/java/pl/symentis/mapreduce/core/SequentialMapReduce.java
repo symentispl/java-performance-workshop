@@ -1,19 +1,16 @@
 package pl.symentis.mapreduce.core;
 
+import static java.util.Objects.requireNonNull;
+
 import java.util.Set;
 import java.util.function.Supplier;
-
-import static java.util.Objects.requireNonNull;
 
 public class SequentialMapReduce implements MapReduce {
 
     public static class Builder {
 
-
         @SuppressWarnings("rawtypes")
         private Supplier<? extends MapperOutput> mapperOutputSupplier = HashMapOutput::new;
-
-
 
         @SuppressWarnings("rawtypes")
         public Builder withMapperOutputSupplier(Supplier<? extends MapperOutput> supplier) {
@@ -24,8 +21,6 @@ public class SequentialMapReduce implements MapReduce {
         public MapReduce build() {
             return new SequentialMapReduce(mapperOutputSupplier);
         }
-
-
     }
 
     @SuppressWarnings("rawtypes")
@@ -54,6 +49,5 @@ public class SequentialMapReduce implements MapReduce {
     }
 
     @Override
-    public void shutdown() {
-    }
+    public void shutdown() {}
 }

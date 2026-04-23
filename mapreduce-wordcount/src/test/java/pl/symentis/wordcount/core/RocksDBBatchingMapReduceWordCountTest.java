@@ -17,8 +17,8 @@ public class RocksDBBatchingMapReduceWordCountTest implements WordCountMapReduce
     @Override
     public MapReduce mapReduce(Bootstrap bootstrap) {
         return new BatchingMapReduce.Builder()
-                .withMapperOutputSupplier(
-                        () -> new RocksDBMapperOutput<>(tempDir, new StringSerializationStrategy(), new LongSerializationStrategy()))
+                .withMapperOutputSupplier(() -> new RocksDBMapperOutput<>(
+                        tempDir, new StringSerializationStrategy(), new LongSerializationStrategy()))
                 .build();
     }
 }

@@ -12,7 +12,8 @@ public class ShardedOffHeapMapperOutput<K, V> implements MapperOutput<K, V>, Aut
 
     private final ShardedOffHeapMultiMap<K, V> offHeapMap;
 
-    public ShardedOffHeapMapperOutput(SerializationStrategy<K> keySerializer, SerializationStrategy<V> valueSerializer) {
+    public ShardedOffHeapMapperOutput(
+            SerializationStrategy<K> keySerializer, SerializationStrategy<V> valueSerializer) {
         try {
             offHeapMap = new ShardedOffHeapMultiMap<>(
                     Files.createTempDirectory("offheap-mapreduce-"), keySerializer, valueSerializer);

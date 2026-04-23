@@ -44,8 +44,8 @@ public class OffHeapMapReduceWordCountBenchmark {
                 .withPhaserMaxTasks(phaserMaxTasks)
                 .withThreadPoolSize(threadPoolMaxSize)
                 .withBatchSize(batchSize)
-                .withMapperOutputSupplier(
-                        () -> new ShardedOffHeapMapperOutput<>(new JavaSerializationStrategy<>(), new JavaSerializationStrategy<>()))
+                .withMapperOutputSupplier(() -> new ShardedOffHeapMapperOutput<>(
+                        new JavaSerializationStrategy<>(), new JavaSerializationStrategy<>()))
                 .build();
     }
 
