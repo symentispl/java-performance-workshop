@@ -11,11 +11,24 @@ public class SequentialMapReduce implements MapReduce {
 
     public static class Builder {
 
+        private final Bootstrap bootstrap;
+
         @SuppressWarnings("rawtypes")
         private Class<? extends MapperOutput> mapperOutputClass = HashMapOutput.class;
 
+        public Builder(Bootstrap bootstrap) {
+            this.bootstrap = Objects.requireNonNull(bootstrap);
+        }
+
         public Builder withMapperOutput(Class<? extends MapperOutput<?, ?>> mapperOutputClass) {
             this.mapperOutputClass = Objects.requireNonNull(mapperOutputClass);
+            return this;
+        }
+
+        @SuppressWarnings("unchecked")
+        public Builder withMapperOutput(String shortClassName) {
+            this.mapperOutputClass =
+                    (Class<? extends MapperOutput>) bootstrap.findClassByShortName(shortClassName, MapperOutput.class);
             return this;
         }
 

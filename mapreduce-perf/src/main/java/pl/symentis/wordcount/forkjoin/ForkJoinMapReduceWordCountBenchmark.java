@@ -2,6 +2,7 @@ package pl.symentis.wordcount.forkjoin;
 
 import java.util.HashMap;
 import org.openjdk.jmh.annotations.*;
+import pl.symentis.mapreduce.core.Bootstrap;
 import pl.symentis.mapreduce.core.MapReduce;
 import pl.symentis.mapreduce.forkjoin.ForkJoinMapReduce;
 import pl.symentis.wordcount.core.Stopwords;
@@ -19,7 +20,7 @@ public class ForkJoinMapReduceWordCountBenchmark {
     @SuppressWarnings("unchecked")
     @Setup(Level.Trial)
     public void setUp() throws Exception {
-        wordCount = new WordCount.Builder()
+        wordCount = new WordCount.Builder(Bootstrap.create())
                 .withStopwords((Class<? extends Stopwords>) Class.forName(stopwordsClass))
                 .build();
         mapReduce = new ForkJoinMapReduce.Builder().build();

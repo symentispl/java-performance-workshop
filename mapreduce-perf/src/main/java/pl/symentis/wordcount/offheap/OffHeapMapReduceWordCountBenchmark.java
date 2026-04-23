@@ -8,6 +8,7 @@ import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
+import pl.symentis.mapreduce.core.Bootstrap;
 import pl.symentis.mapreduce.core.MapReduce;
 import pl.symentis.mapreduce.offheap.JavaSerializationStrategy;
 import pl.symentis.mapreduce.offheap.OffHeapBatchingMapReduce;
@@ -35,7 +36,7 @@ public class OffHeapMapReduceWordCountBenchmark {
     @SuppressWarnings("unchecked")
     @Setup(Level.Trial)
     public void setUp() throws Exception {
-        wordCount = new WordCount.Builder()
+        wordCount = new WordCount.Builder(Bootstrap.create())
                 .withStopwords((Class<? extends Stopwords>) Class.forName(stopwordsClass))
                 .build();
         mapReduce = new OffHeapBatchingMapReduce.Builder()

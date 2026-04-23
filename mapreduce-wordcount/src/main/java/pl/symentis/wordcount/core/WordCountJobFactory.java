@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.UncheckedIOException;
 import java.util.Map;
+
+import pl.symentis.mapreduce.core.Bootstrap;
 import pl.symentis.mapreduce.core.Job;
 import pl.symentis.mapreduce.core.JobFactory;
 import pl.symentis.wordcount.stopwords.ICUThreadLocalStopwords;
@@ -13,7 +15,8 @@ public class WordCountJobFactory implements JobFactory {
     @Override
     public Job create(Map<String, String> context) {
         var filename = context.get("filename");
-        var wordCount = new WordCount.Builder()
+        Bootstrap bootstrap = Bootstrap.create();
+        var wordCount = new WordCount.Builder(bootstrap)
                 .withStopwords(ICUThreadLocalStopwords.class)
                 .build();
         try {
