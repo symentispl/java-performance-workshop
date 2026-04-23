@@ -1,7 +1,14 @@
 package pl.symentis.wordcount.sequential;
 
 import java.util.HashMap;
-import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.Level;
+import org.openjdk.jmh.annotations.Param;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
+import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.TearDown;
+import pl.symentis.mapreduce.core.Bootstrap;
 import pl.symentis.mapreduce.core.Bootstrap;
 import pl.symentis.mapreduce.core.MapReduce;
 import pl.symentis.mapreduce.core.SequentialMapReduce;
@@ -13,19 +20,24 @@ public class SequentialMapReduceWordCountBenchmark {
     @Param({"HashMapOutput"})
     public String mapperOutputClass;
 
-    @Param({"NonThreadLocalStopwords"})
+    @Param({"NonCollatorStopwords"})
     public String stopwordsClass;
+
+    @Param({"StringTokenizerSplitter"})
+    public String stringSplitterClass;
 
     private WordCount wordCount;
     private MapReduce mapReduce;
     private Bootstrap bootstrap;
 
-    @SuppressWarnings("unchecked")
     @Setup(Level.Trial)
-    public void setUp() throws Exception {
+    public void setUp() {
+        bootstrap = Bootstrap.create();
         bootstrap = Bootstrap.create();
         wordCount =
-                new WordCount.Builder(bootstrap).withStopwords(stopwordsClass).build();
+                new WordCount.Builder(bootstrap).withStopwords(stopwordsClass)
+                        .withStringSplitter(stringSplitterClass)
+                        .build();
         mapReduce = new SequentialMapReduce.Builder(bootstrap)
                 .withMapperOutput(mapperOutputClass)
                 .build();
@@ -39,7 +51,7 @@ public class SequentialMapReduceWordCountBenchmark {
 
     @Benchmark
     public Object countWords() {
-        HashMap<String, Long> map = new HashMap<String, Long>();
+        HashMap<String, Long> map = new HashMap<>();
         mapReduce.run(
                 wordCount.input(SequentialMapReduceWordCountBenchmark.class.getResourceAsStream("/big.txt")),
                 wordCount.mapper(),
