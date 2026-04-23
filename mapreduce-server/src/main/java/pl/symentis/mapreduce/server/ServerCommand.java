@@ -11,7 +11,7 @@ import java.nio.file.Path;
 import java.util.concurrent.Executors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import pl.symentis.mapreduce.batching.BatchingParallelMapReduce;
+import pl.symentis.mapreduce.batching.BatchingMapReduce;
 
 @Command(name = "bootstrap")
 public class ServerCommand implements Runnable {
@@ -61,7 +61,7 @@ public class ServerCommand implements Runnable {
             var javalin = Javalin.create();
 
             LOG.info("initializing map reduce framework");
-            var mapReduce = new BatchingParallelMapReduce.Builder()
+            var mapReduce = new BatchingMapReduce.Builder()
                     .withBatchSize(1000)
                     .withPhaserMaxTasks(10000)
                     .withThreadPoolSize(Runtime.getRuntime().availableProcessors())
@@ -69,9 +69,8 @@ public class ServerCommand implements Runnable {
 
             var executorService =
                     Executors.newScheduledThreadPool(Runtime.getRuntime().availableProcessors() + 1);
-            var gson = new Gson();
 
-            return new Server(javalin, port, executorService, gson, mapReduce, jobsDir);
+            return new Server(javalin, port, executorService,  mapReduce, jobsDir);
         }
     }
 }

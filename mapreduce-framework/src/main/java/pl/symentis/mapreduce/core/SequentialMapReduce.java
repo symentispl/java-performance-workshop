@@ -24,6 +24,8 @@ public class SequentialMapReduce implements MapReduce {
         public MapReduce build() {
             return new SequentialMapReduce(mapperOutputSupplier);
         }
+
+
     }
 
     @SuppressWarnings("rawtypes")

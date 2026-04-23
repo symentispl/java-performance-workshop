@@ -27,7 +27,17 @@ public class SequentialMapReduceWordCountBenchmark {
                 .withStopwords((Class<? extends Stopwords>) Class.forName(stopwordsClass))
                 .build();
         mapReduce = new SequentialMapReduce.Builder()
-                .withMapperOutput((Class<? extends MapperOutput<?, ?>>) Class.forName(mapperOutputClass))
+                .withMapperOutputSupplier(() -> {
+                    try {
+                        return (MapperOutput) Class.forName(mapperOutputClass).newInstance();
+                    } catch (InstantiationException e) {
+                        throw new RuntimeException(e);
+                    } catch (IllegalAccessException e) {
+                        throw new RuntimeException(e);
+                    } catch (ClassNotFoundException e) {
+                        throw new RuntimeException(e);
+                    }
+                })
                 .build();
     }
 
