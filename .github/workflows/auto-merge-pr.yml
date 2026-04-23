@@ -28,7 +28,6 @@ env:
 jobs:
   create-merge-pr:
     runs-on: ubuntu-latest
-    if: github.ref != 'refs/heads/server'  # Don't trigger on server branch pushes
     
     steps:
     - name: Checkout repository
