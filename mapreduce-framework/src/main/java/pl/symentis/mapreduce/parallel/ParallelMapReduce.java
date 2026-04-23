@@ -50,10 +50,10 @@ public class ParallelMapReduce implements MapReduce {
     public <In, MK, MV, RK, RV> void run(
             Input<In> input, Mapper<In, MK, MV> mapper, Reducer<MK, MV, RK, RV> reducer, Output<RK, RV> output) {
 
-        Phaser rootPhaser = new Phaser() {
+        Phaser rootPhaser = new Phaser(1) {
             @Override
             protected boolean onAdvance(int phase, int registeredParties) {
-                return phase == 0 && registeredParties == 0 && !input.hasNext();
+                return registeredParties == 0;
             }
         };
 
@@ -76,6 +76,7 @@ public class ParallelMapReduce implements MapReduce {
             }
         }
 
+        rootPhaser.arriveAndDeregister();
         rootPhaser.awaitAdvance(0);
 
         // reduce
