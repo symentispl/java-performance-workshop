@@ -11,14 +11,16 @@ import org.openjdk.jmh.annotations.TearDown;
 import pl.symentis.mapreduce.batching.BatchingMapReduce;
 import pl.symentis.mapreduce.core.Bootstrap;
 import pl.symentis.mapreduce.core.MapReduce;
-import pl.symentis.wordcount.core.Stopwords;
 import pl.symentis.wordcount.core.WordCount;
 
 @State(Scope.Benchmark)
 public class BatchingMapReduceWordCountBenchmark {
 
-    @Param({"pl.symentis.wordcount.stopwords.ICUThreadLocalStopwords"})
+    @Param({"NonCollatorStopwords"})
     public String stopwordsClass;
+
+    @Param({"StringTokenizerSplitter"})
+    public String stringSplitterClass;
 
     @Param({"8"})
     public int threadPoolMaxSize;
@@ -31,12 +33,15 @@ public class BatchingMapReduceWordCountBenchmark {
 
     private WordCount wordCount;
     private MapReduce mapReduce;
+    private Bootstrap bootstrap;
 
     @SuppressWarnings("unchecked")
     @Setup(Level.Trial)
     public void setUp() throws Exception {
-        wordCount = new WordCount.Builder(Bootstrap.create())
-                .withStopwords((Class<? extends Stopwords>) Class.forName(stopwordsClass))
+        bootstrap = Bootstrap.create();
+        wordCount = new WordCount.Builder(bootstrap)
+                .withStopwords(stopwordsClass)
+                .withStringSplitter(stringSplitterClass)
                 .build();
         mapReduce = new BatchingMapReduce.Builder()
                 .withPhaserMaxTasks(phaserMaxTasks)
@@ -47,6 +52,7 @@ public class BatchingMapReduceWordCountBenchmark {
 
     @TearDown(Level.Trial)
     public void tearDown() {
+        bootstrap.close();
         mapReduce.shutdown();
     }
 
