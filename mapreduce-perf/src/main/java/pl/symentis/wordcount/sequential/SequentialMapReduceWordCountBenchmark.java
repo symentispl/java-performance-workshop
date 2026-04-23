@@ -32,10 +32,11 @@ public class SequentialMapReduceWordCountBenchmark {
     @Setup(Level.Trial)
     public void setUp() {
         bootstrap = Bootstrap.create();
-        wordCount = new WordCount.Builder(bootstrap)
-                .withStopwords(stopwordsClass)
-                .withStringSplitter(stringSplitterClass)
-                .build();
+        wordCount =
+                new WordCount.Builder(bootstrap)
+                        .withStopwords(stopwordsClass)
+                        .withStringSplitter(stringSplitterClass)
+                        .build();
         mapReduce = new SequentialMapReduce.Builder(bootstrap)
                 .withMapperOutput(mapperOutputClass)
                 .build();
