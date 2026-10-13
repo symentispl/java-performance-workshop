@@ -10,7 +10,7 @@ tasks:
   download-async-profiler:
     desc: "Install async-profiler"
     vars:
-      ASYNC_PROFILER_VERSION: "4.3"
+      ASYNC_PROFILER_VERSION: "4.5"
       ASYNC_PROFILER_LINUX_X86_URL: "https://github.com/async-profiler/async-profiler/releases/download/v{{.ASYNC_PROFILER_VERSION}}/async-profiler-{{.ASYNC_PROFILER_VERSION}}-linux-x64.tar.gz"
       ASYNC_PROFILER_LINUX_X86_ARCHIVE: "async-profiler-{{.ASYNC_PROFILER_VERSION}}-linux-x64.tar.gz"
       ASYNC_PROFILER_MACOS_URL: "https://github.com/async-profiler/async-profiler/releases/download/v{{.ASYNC_PROFILER_VERSION}}/async-profiler-{{.ASYNC_PROFILER_VERSION}}-macos.zip"
@@ -72,3 +72,10 @@ tasks:
         platforms: [ darwin ]
       - cmd: java -jar {{.BENCHMARKS_JAR}} {{.CLI_ARGS}} -wi 5 -i 5 -f 1 -prof "jfr:dir={{.BENCHMARKS_OUTPUT_DIR}}"
         platforms: [ windows ]
+  profile-benchmarks-jfr:
+    desc: "Profile benchmarks using JFR (use '-- [benchmark name]' to run selected benchmarks)"
+    deps:
+      - build
+    cmds:
+      - java -jar {{.BENCHMARKS_JAR}} {{.CLI_ARGS}} -wi 5 -i 5 -f 1 -prof "jfr:configName=profile;dir={{.BENCHMARKS_OUTPUT_DIR}}"
+
